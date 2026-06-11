@@ -12,6 +12,13 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+import dj_database_url
+
+# Load environment variables from the .env file
+load_dotenv()
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,19 +27,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-(^-pwc&exog_8z)3d$95h#@*-m_qlf)820awabh&_-o54_)@%4'
+SECRET_KEY = os.environ.get('SECRET_KEY')
+DEBUG = os.environ.get('DEBUG') == 'True'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+ALLOWED_HOSTS = ['*'] # We will lock this down later once we get your Render URL
 
-# Replace 192.168.1.5 with your actual IPv4 address from the step abov
-ALLOWED_HOSTS = ['*']
-
-# 🚀 Tell Django to trust data coming from ANY Ngrok URL
+# 🚀 Tell Django to trust data coming from ANY Ngrok URL or Render
 CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok-free.dev',
     'https://*.ngrok.app',
     'https://*.ngrok.io',
+    'https://*.onrender.com',  # Added for Render deployment
 ]
 
 # Application definition
@@ -53,6 +58,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # 🚀 Added WhiteNoise for production static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -84,11 +90,13 @@ WSGI_APPLICATION = 'glowguide_web.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# 🚀 Automatically uses Render's PostgreSQL when online.
+# Falls back to your local skincare_catalog.db when testing on your laptop.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'skincare_catalog.db',
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///' + str(BASE_DIR / 'skincare_catalog.db'),
+        conn_max_age=600
+    )
 }
 
 
@@ -126,13 +134,19 @@ USE_I18N = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
-TATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')] # Where you put your code
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')   # Where Django collects them for production
 
-# This line is CRITICAL. It tells Django where your static folder actually lives.
+# Where your local code lives
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+# Where Django collects files for the live server
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# 🚀 Tells WhiteNoise to compress and cache your CSS/JS for speed
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
 # ==========================================
 # REAL EMAIL SMTP SETTINGS
 # ==========================================
@@ -141,10 +155,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-# Put your actual Gmail address here:
-EMAIL_HOST_USER = 'nakulburkul@gmail.com' 
-
-# Put the 16-character App Password here (NO SPACES):
-EMAIL_HOST_PASSWORD = 'fmlq umft yrud swpe' 
+# 🚀 Now pulling securely from the .env file
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
 DEFAULT_FROM_EMAIL = 'GlowGuide <nakulburkul@gmail.com>'
