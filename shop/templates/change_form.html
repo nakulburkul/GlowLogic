@@ -1,0 +1,15 @@
+{% extends 'unfold/change_form.html' %}
+
+{% block submit_buttons_bottom %}
+<div class="flex flex-row flex-wrap gap-2 p-4 bg-gray-50 border-t border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+    {{ block.super }}
+    
+    <button type="submit" name="_save_and_back" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 text-sm shadow-sm flex items-center">
+        ⬅️ Save and Go Back Product
+    </button>
+    
+    <button type="submit" name="_save_and_next" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 text-sm shadow-sm flex items-center">
+        Save and Next Product ➡️
+    </button>
+</div>
+{% endblock %}

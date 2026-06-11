@@ -1,0 +1,19 @@
+# Python environment
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Database
+db.sqlite3
+
+# Environment variables (Secret Keys)
+.env
+
+# Media and Static files (Uploads)
+media/
+staticfiles/
+
+# OS generated files
+.DS_Store
+Thumbs.db

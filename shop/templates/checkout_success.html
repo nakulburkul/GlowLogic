@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* Beautiful CSS Animation for the Green Tick */
+    .success-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background-color: #2ecc71;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 30px;
+        box-shadow: 0 10px 25px rgba(46, 204, 113, 0.4);
+        animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .check-icon {
+        color: white;
+        font-size: 60px;
+        font-weight: bold;
+    }
+    @keyframes popIn {
+        0% { transform: scale(0); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .success-card {
+        background: white;
+        border: none;
+        border-radius: 20px;
+        padding: 60px 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+</style>
+
+<div class="container mt-5 mb-5" style="max-width: 700px;">
+    <div class="success-card text-center">
+        
+        <div class="success-circle">
+            <span class="check-icon">✓</span>
+        </div>
+
+        <h1 class="fw-bold mb-3" style="font-family: 'Playfair Display', serif; color: #2c3e50;">Payment Successful!</h1>
+        <p class="text-muted fs-5 mb-5">Thank you for your order. Your GlowGuide skincare products are being prepared for shipment. You will receive an email confirmation shortly.</p>
+        
+        <div class="d-flex justify-content-center gap-3">
+            <a href="/shop/" class="btn btn-outline-dark rounded-pill px-4 py-2 fw-bold">Continue Shopping</a>
+            <a href="/routine/" class="btn btn-glow px-4 py-2">View My Routine</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4 py-md-5 mb-5">
+    <div class="text-center mb-5">
+        <span class="fs-1 d-block mb-3">🧪</span>
+        <h2 class="fw-bold" style="font-family: 'Playfair Display', serif; color: #2c3e50;">Ingredient Analyzer (Beta)</h2>
+        <p class="text-muted fs-5 mx-auto" style="max-width: 600px;">Powered by our custom text-classification engine. Paste any product's ingredient list below to instantly detect key chemicals.</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+                <form id="analyzerForm">
+                    {% csrf_token %}
+                    <label class="form-label fw-bold small text-uppercase text-muted tracking-wider">Paste Ingredients Here</label>
+                    <textarea class="form-control bg-light border-0 mb-4 rounded-3 p-3" id="ingredientInput" rows="6" placeholder="e.g. Water, Glycerin, Niacinamide, Isopropyl Myristate, Cetearyl Alcohol, Salicylic Acid..."></textarea>
+                    
+                    <button type="submit" class="btn btn-dark w-100 py-3 rounded-pill fw-bold fs-5 shadow-sm" id="analyzeBtn">
+                        Analyze Formula ✨
+                    </button>
+                </form>
+
+                <div id="resultsSection" class="mt-5 pt-4 border-top" style="display: none;">
+                    <h5 class="fw-bold mb-4 text-center">Formulation Breakdown</h5>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-4" style="background-color: #f0fdf4; border: 1px solid #bbf7d0;">
+                                <h6 class="fw-bold text-success"><i class="fas fa-tint me-2"></i>Hydrators</h6>
+                                <ul id="listHydrating" class="mb-0 ps-3 small text-muted"></ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-4" style="background-color: #eff6ff; border: 1px solid #bfdbfe;">
+                                <h6 class="fw-bold text-primary"><i class="fas fa-bolt me-2"></i>Actives</h6>
+                                <ul id="listActives" class="mb-0 ps-3 small text-muted"></ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-4" style="background-color: #fef2f2; border: 1px solid #fecaca;">
+                                <h6 class="fw-bold text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Comedogenic</h6>
+                                <ul id="listClogging" class="mb-0 ps-3 small text-muted"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('analyzerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const text = document.getElementById('ingredientInput').value;
+    const btn = document.getElementById('analyzeBtn');
+    
+    // UI Loading state
+    btn.innerHTML = 'Scanning Data... <i class="fas fa-spinner fa-spin"></i>';
+    btn.classList.add('disabled');
+
+    // Get CSRF Token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Prepare Data
+    const formData = new FormData();
+    formData.append('ingredients', text);
+
+    fetch('/analyzer/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Reset Button
+        btn.innerHTML = 'Analyze Formula ✨';
+        btn.classList.remove('disabled');
+        
+        // Show Results Section
+        document.getElementById('resultsSection').style.display = 'block';
+        
+        // Populate Lists
+        const fillList = (id, items) => {
+            const ul = document.getElementById(id);
+            if(items.length > 0) {
+                ul.innerHTML = items.map(i => `<li class="text-capitalize">${i}</li>`).join('');
+            } else {
+                ul.innerHTML = '<li>None detected</li>';
+            }
+        };
+
+        fillList('listHydrating', data.hydrating);
+        fillList('listActives', data.actives);
+        fillList('listClogging', data.clogging);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        btn.innerHTML = 'Analyze Formula ✨';
+        btn.classList.remove('disabled');
+        alert("An error occurred during analysis.");
+    });
+});
+</script>
+{% endblock %}

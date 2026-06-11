@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5 mb-5" style="max-width: 800px;">
+    
+    <div class="text-center mb-4">
+        <h2 class="fw-bold" style="font-family: 'Playfair Display', serif;">Secure Checkout</h2>
+        <p class="text-muted">Complete your GlowGuide purchase.</p>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5">
+        
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-4 mb-4">
+            <h5 class="fw-bold text-muted mb-0">Order Total</h5>
+            <h3 class="fw-bold mb-0" style="color: var(--primary-green);">₹{{ grand_total }}</h3>
+        </div>
+
+        <form action="{% url 'checkout_success' %}" method="POST">
+            {% csrf_token %}
+            
+            <h5 class="fw-bold mb-3 mt-4">1. Shipping Details</h5>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Full Name</label>
+                    <input type="text" name="full_name" class="form-control bg-light" placeholder="e.g. Jane Doe" required>
+                </div>
+                <div class="col-md-6 mt-3 mt-md-0">
+                    <label class="form-label text-muted small fw-bold">Email Address</label>
+                    <input type="email" name="email" class="form-control bg-light" placeholder="jane@example.com" required>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold">Street Address</label>
+                <input type="text" name="shipping_address" class="form-control bg-light" placeholder="123 Skincare Lane, Apt 4" required>
+            </div>
+
+            <div class="row mb-5 pb-4 border-bottom">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">City</label>
+                    <input type="text" name="city" class="form-control bg-light" placeholder="Mumbai" required>
+                </div>
+                <div class="col-md-6 mt-3 mt-md-0">
+                    <label class="form-label text-muted small fw-bold">Postal / Zip Code</label>
+                    <input type="text" name="zip_code" class="form-control bg-light" placeholder="400001" required>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mb-3">2. Payment Details</h5>
+            
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold">Name on Card</label>
+                <input type="text" class="form-control bg-light" placeholder="Jane Doe" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label text-muted small fw-bold">Card Number</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light">💳</span>
+                    <input type="text" class="form-control bg-light" placeholder="0000 0000 0000 0000" maxlength="19" required>
+                </div>
+            </div>
+            
+            <div class="row mb-5">
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold">Expiry Date</label>
+                    <input type="text" class="form-control bg-light" placeholder="MM/YY" maxlength="5" required>
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold">CVV</label>
+                    <input type="password" class="form-control bg-light" placeholder="123" maxlength="3" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-glow w-100 py-3 fs-5">Pay ₹{{ grand_total }} Securely</button>
+            <p class="text-center text-muted small mt-3">🔒 256-bit SSL Encrypted Transaction</p>
+        </form>
+
+    </div>
+</div>
+{% endblock %}

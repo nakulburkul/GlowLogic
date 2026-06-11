@@ -1,0 +1,266 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>{% block title %}GlowLogic | Smarter Skincare{% endblock %}</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+    body { font-family: 'Inter', sans-serif; background-color: #fcfcfc; }
+    h1, h2, h3, h4, h5, .nav-brand-glow { font-family: 'Playfair Display', serif !important; }
+    
+    .glow-navbar { background-color: #ffffff; box-shadow: 0 2px 15px rgba(0,0,0,0.04); padding: 12px 0; }
+    
+    /* 🚀 Restored the clean, text-based branding */
+    .nav-brand-glow { font-size: 1.5rem; font-weight: 800; color: #2ecc71 !important; letter-spacing: 0.5px; }
+
+    /* Nav Links */
+    .nav-item-custom { margin: 0 4px; }
+    .nav-link-custom {
+        color: #4a5568 !important; font-weight: 600; font-size: 0.95rem;
+        padding: 8px 16px !important; border-radius: 8px; transition: all 0.2s ease-in-out;
+    }
+    .nav-link-custom:hover { color: #2ecc71 !important; background-color: #f0fdf4; }
+    .nav-link-danger { color: #e53e3e !important; }
+
+    /* MOBILE BOTTOM NAV */
+    .mobile-bottom-nav {
+        display: none; position: fixed; bottom: 0; width: 100%; background: white;
+        border-top: 1px solid #eee; padding: 10px 0; z-index: 1050; box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+    }
+    .mobile-nav-link { 
+        color: #64748b; text-decoration: none; font-size: 0.7rem; font-weight: 500;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; 
+        transition: color 0.2s ease;
+    }
+    .mobile-nav-link i { font-size: 1.25rem; margin-bottom: 4px; }
+    .mobile-nav-link:hover, .mobile-nav-link:active { color: #2ecc71; }
+
+    @media (max-width: 991px) {
+        .mobile-bottom-nav { display: flex; }
+    }
+
+    /* FLOATING AI BUTTON */
+    .floating-chat-btn {
+        position: fixed;
+        bottom: 40px;
+        right: 30px;
+        background: #1a202c;
+        color: white;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        z-index: 1000;
+        transition: 0.3s;
+        text-decoration: none;
+    }
+    .floating-chat-btn:hover {
+        background: #2ecc71;
+        color: white;
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 15px 25px rgba(46, 204, 113, 0.3);
+    }
+    @media (max-width: 991px) {
+        .floating-chat-btn { bottom: 90px; right: 20px; } 
+    }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg glow-navbar sticky-top">
+    <div class="container">
+        <a class="navbar-brand nav-brand-glow d-flex align-items-center gap-2" href="{% url 'home' %}">✨ GlowLogic</a>
+        
+        <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav mx-auto mb-3 mb-lg-0 align-items-start align-items-lg-center mt-3 mt-lg-0">
+                <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'home' %}">Home</a></li>
+                <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'shop' %}">Shop Catalog</a></li>
+                <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'guide' %}">📖 Skin Guide</a></li>
+                
+                <li class="nav-item nav-item-custom w-100 w-lg-auto">
+                    <a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'ai_skin_scanner' %}">
+                        <i class="fas fa-barcode text-primary"></i> Scan Ingredients
+                    </a>
+                </li>
+
+                <li class="nav-item nav-item-custom w-100 w-lg-auto">
+                    <a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'ai_assistant_page' %}">
+                        <i class="fas fa-robot text-success"></i> Ask AI
+                    </a>
+                </li>
+
+                {% if user.is_authenticated %}
+                    <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'profile' %}">👤 My Profile</a></li>
+                    <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom nav-link-danger px-2 text-nowrap" href="{% url 'wishlist' %}">❤️ My Wishlist</a></li>
+                {% endif %}
+            </ul>
+
+            <div class="d-flex align-items-stretch align-items-lg-center gap-3 flex-column flex-lg-row pb-3 pb-lg-0">
+                <form method="GET" action="{% url 'shop' %}" class="d-flex position-relative w-100" style="min-width: 200px; max-width: 280px; flex-grow: 1;">
+                    <input type="text" id="liveSearchInput" name="q" class="form-control rounded-pill bg-light border-0 ps-3 pe-5 w-100" placeholder="Search products..." style="font-size: 0.9rem;" autocomplete="off">
+                    <button type="submit" class="btn position-absolute end-0 top-50 translate-middle-y border-0 text-muted shadow-none" style="background: transparent; z-index: 10;">🔍</button>
+                    <div id="searchSuggestions" class="dropdown-menu shadow-lg w-100 border-0 rounded-4 mt-2 position-absolute" style="display: none; top: 100%; z-index: 1050; max-height: 350px; overflow-y: auto;"></div>
+                </form>
+
+                <div class="d-flex align-items-center justify-content-center">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'logout' %}" class="nav-link nav-link-custom nav-link-danger px-2 text-nowrap">Logout</a>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="nav-link nav-link-custom px-2 text-nowrap">Login</a>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex align-items-center justify-content-center justify-content-lg-end gap-2 mt-2 mt-lg-0">
+                    {% if request.session.saved_routine %}
+                        <a href="{% url 'my_routine' %}" class="btn btn-outline-success rounded-pill fw-bold px-3 py-2 shadow-sm text-nowrap" style="font-size: 0.9rem;">My Routine</a>
+                    {% endif %}
+
+                    <a href="{% url 'skin_quiz' %}" class="btn rounded-pill text-white fw-bold px-3 py-2 shadow-sm text-nowrap" style="background-color: #2ecc71; font-size: 0.9rem;">
+                        Quiz
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer style="background-color: #f8f9fa; border-top: 1px solid #e7eaf3; padding: 2.5rem 0; margin-top: 4rem; text-align: center; padding-bottom: 90px;">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+        <p style="color: #6c757d; font-size: 0.95rem; margin: 0; font-family: system-ui, -apple-system, sans-serif;">
+            &copy; 2026 GlowLogic. All rights reserved. <br>
+            <span style="font-size: 0.85rem; opacity: 0.8;">Powered by intelligent skincare algorithms.</span>
+        </p>
+    </div>
+</footer>
+
+<div class="mobile-bottom-nav d-lg-none">
+    <a href="{% url 'home' %}" class="mobile-nav-link"><i class="fas fa-home"></i>Home</a>
+    <a href="{% url 'shop' %}" class="mobile-nav-link"><i class="fas fa-search"></i>Shop</a>
+    <a href="{% url 'wishlist' %}" class="mobile-nav-link"><i class="fas fa-heart"></i>Saved</a>
+    <a href="{% url 'profile' %}" class="mobile-nav-link"><i class="fas fa-user"></i>Profile</a>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055; margin-bottom: 60px;">
+  <div id="wishlistToast" class="toast align-items-center text-bg-dark border-0 rounded-pill shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex px-3 py-2">
+      <div class="toast-body fw-bold" id="toastMessage" style="font-size: 0.95rem;">
+        ❤️ Added to Wishlist!
+      </div>
+    </div>
+  </div>
+</div>
+
+<a href="{% url 'ai_assistant_page' %}" class="floating-chat-btn" title="Chat with GlowLogic AI">
+    <i class="fas fa-robot"></i>
+</a>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // --- 1. AJAX WISHLIST WITH TOAST NOTIFICATION ---
+    const wishlistButtons = document.querySelectorAll('a[href^="/wishlist/toggle/"]');
+    const toastEl = document.getElementById('wishlistToast');
+    const toast = new bootstrap.Toast(toastEl, { delay: 2500 });
+    const toastMsg = document.getElementById('toastMessage');
+
+    wishlistButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            const btn = this;
+            
+            fetch(url, { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(response => response.redirected ? (window.location.href = response.url) : response.json())
+            .then(data => {
+                if (data && data.status === 'success') {
+                    if (window.location.pathname.includes('/wishlist/')) {
+                        const card = btn.closest('.col');
+                        card.style.opacity = '0';
+                        setTimeout(() => card.remove(), 300);
+                        toastMsg.innerHTML = '🤍 Removed from Wishlist!';
+                    } else {
+                        const icon = btn.querySelector('i');
+                        if (icon) {
+                            if(data.action === 'added') {
+                                icon.classList.remove('far', 'text-muted');
+                                icon.classList.add('fas', 'text-danger');
+                                toastMsg.innerHTML = '❤️ Saved to Wishlist!';
+                            } else {
+                                icon.classList.remove('fas', 'text-danger');
+                                icon.classList.add('far', 'text-muted');
+                                toastMsg.innerHTML = '🤍 Removed from Wishlist!';
+                            }
+                        } else {
+                            if(data.action === 'added') {
+                                btn.innerHTML = btn.innerHTML.replace('🤍', '❤️').replace('Save', 'Saved');
+                                toastMsg.innerHTML = '❤️ Saved to Wishlist!';
+                            } else {
+                                btn.innerHTML = btn.innerHTML.replace('❤️', '🤍').replace('Saved', 'Save');
+                                toastMsg.innerHTML = '🤍 Removed from Wishlist!';
+                            }
+                        }
+                    }
+                    toast.show(); 
+                }
+            }).catch(err => console.error('Wishlist error:', err));
+        });
+    });
+
+    // --- 2. INSTANT LIVE SEARCH ---
+    const searchInput = document.getElementById('liveSearchInput');
+    const suggestionsBox = document.getElementById('searchSuggestions');
+
+    if(searchInput) {
+        searchInput.addEventListener('input', function() {
+            let query = this.value;
+            
+            if (query.length > 1) {
+                fetch(`/live-search/?q=${query}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        suggestionsBox.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(item => {
+                                suggestionsBox.innerHTML += `
+                                    <a href="/product/${item.id}/" class="dropdown-item py-2 px-3 border-bottom d-flex justify-content-between align-items-center transition-hover">
+                                        <span class="small fw-bold text-wrap" style="max-width: 70%;">${item.name}</span>
+                                        <span class="badge bg-success-subtle text-success">₹${item.price || 'Check'}</span>
+                                    </a>`;
+                            });
+                            suggestionsBox.style.display = 'block';
+                        } else {
+                            suggestionsBox.style.display = 'none';
+                        }
+                    });
+            } else {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.id !== 'liveSearchInput') {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .auth-form input { width: 100%; padding: 12px 15px; margin-top: 5px; border: 1px solid #ced4da; border-radius: 8px; background-color: #f8f9fa; }
+    .auth-form input:focus { outline: none; border-color: var(--primary-green); box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.2); }
+    .auth-form label { font-weight: bold; font-size: 0.85rem; color: #6c757d; margin-top: 15px; display: block; text-align: left; }
+    .auth-form .helptext { font-size: 0.75rem; color: #adb5bd; display: block; text-align: left; margin-top: 5px; line-height: 1.4; }
+    .auth-form ul { list-style: none; padding: 0; margin: 5px 0 0 0; text-align: left; }
+    .auth-form ul.errorlist li { color: #e74c3c; font-size: 0.85rem; font-weight: bold; background: #fdf2f2; padding: 8px; border-radius: 5px; margin-bottom: 5px;}
+</style>
+
+<div class="container mt-5 mb-5 d-flex justify-content-center">
+    <div class="card border-0 shadow-sm rounded-4 p-5 text-center" style="width: 450px;">
+        <h2 class="fw-bold mb-2" style="font-family: 'Playfair Display', serif;">Create Account</h2>
+        <p class="text-muted mb-4">Join GlowGuide to track your orders and routines.</p>
+        
+        <form method="POST" class="auth-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-dark rounded-pill w-100 py-3 mt-4 fs-5">Sign Up</button>
+        </form>
+        
+        <p class="text-center mt-4 small"><a href="/login/" class="text-muted fw-bold">Already have an account? Log in.</a></p>
+    </div>
+</div>
+{% endblock %}

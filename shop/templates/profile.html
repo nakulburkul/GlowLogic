@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* =========================================
+       CONSISTENCY LAB & NOTIFICATION STYLES
+       ========================================= */
+    .dashboard-card {
+        background: white; border-radius: 30px; padding: 40px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.05); border: 1px solid #edf2f7;
+    }
+    .streak-container {
+        display: flex; justify-content: space-between; gap: 10px; margin-top: 30px;
+    }
+    .day-col {
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .day-name {
+        font-size: 0.85rem; font-weight: 600; color: #64748b;
+    }
+    .status-circle {
+        width: 35px; height: 35px; border-radius: 50%; display: flex; 
+        align-items: center; justify-content: center; font-size: 0.8rem;
+        background: #f1f5f9; color: #cbd5e1; transition: 0.3s;
+    }
+    .status-circle.done { background: #2ecc71; color: white; box-shadow: 0 4px 10px rgba(46,204,113,0.3); }
+    
+    .action-btn {
+        padding: 12px 25px; border-radius: 50px; font-weight: 600; border: none;
+        transition: 0.3s; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-am { background: #fef3c7; color: #d97706; }
+    .btn-am:hover { background: #fde68a; }
+    .btn-pm { background: #e0e7ff; color: #4f46e5; }
+    .btn-pm:hover { background: #c7d2fe; }
+    
+    .notify-banner {
+        background: #1a202c; color: white; padding: 15px 25px; border-radius: 15px;
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+    }
+</style>
+
+<div class="container py-4 py-md-5 mb-5">
+    
+    <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+        <div class="bg-light rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 80px; height: 80px; border: 2px solid #2ecc71;">
+            <span class="fs-1">👤</span>
+        </div>
+        <div class="ms-4">
+            <h1 class="fw-bold mb-1" style="color: #2c3e50; font-family: 'Playfair Display', serif;">Welcome, {{ user.username|title }}</h1>
+            <p class="text-muted mb-0"><span class="badge bg-success-subtle text-success border border-success-subtle me-2">✓ Verified Member</span> Joined {{ user.date_joined|date:"M Y" }}</p>
+        </div>
+    </div>
+
+    <div class="notify-banner shadow-sm" id="notifyBanner" style="display: none;">
+        <div>
+            <i class="fas fa-bell text-warning me-2"></i> 
+            <strong>Enable Reminders:</strong> Never miss a routine step! Let GlowGuide notify you.
+        </div>
+        <button onclick="requestNotificationPermission()" class="btn btn-sm btn-light rounded-pill px-3 fw-bold">Allow</button>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card h-100 border-0 rounded-4 shadow-sm p-4 p-md-5 transition-hover" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <span class="display-4 mb-0">✨</span>
+                    {% if request.session.saved_routine %}
+                        <span class="badge bg-success text-white rounded-pill px-3 py-2">Routine Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary text-white rounded-pill px-3 py-2">No Routine</span>
+                    {% endif %}
+                </div>
+                
+                <h3 class="fw-bold text-dark mb-2" style="font-family: 'Playfair Display', serif;">Your Skincare Routine</h3>
+                
+                {% if request.session.saved_routine %}
+                    <p class="text-muted mb-4">You have a personalized routine generated for <strong>{{ request.session.saved_routine.skin_type }}</strong> skin.</p>
+                    <a href="{% url 'my_routine' %}" class="btn btn-success rounded-pill fw-bold px-4 py-2 mt-auto align-self-start shadow-sm">View My Routine ➔</a>
+                {% else %}
+                    <p class="text-muted mb-4">You haven't generated a routine yet. Take our 2-minute intelligent quiz to get started.</p>
+                    <a href="{% url 'skin_quiz' %}" class="btn btn-success rounded-pill fw-bold px-4 py-2 mt-auto align-self-start shadow-sm">Take the Skin Quiz ➔</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100 border-0 rounded-4 shadow-sm p-4 p-md-5 transition-hover" style="background: linear-gradient(135deg, #fffafb 0%, #fce4ec 100%);">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <span class="display-4 mb-0">❤️</span>
+                    <span class="badge bg-danger text-white rounded-pill px-3 py-2">{{ user.wishlists.count }} Saved Items</span>
+                </div>
+                
+                <h3 class="fw-bold text-dark mb-2" style="font-family: 'Playfair Display', serif;">Your Wishlist</h3>
+                <p class="text-muted mb-4">Track price drops and manage the products you've saved from the shop catalog.</p>
+                <a href="{% url 'wishlist' %}" class="btn btn-danger rounded-pill fw-bold px-4 py-2 mt-auto align-self-start shadow-sm">Manage Wishlist ➔</a>
+            </div>
+        </div>
+        
+        <div class="col-12 mt-5">
+            <div class="dashboard-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0">Consistency Lab 🔬 
+                        {% if current_streak > 0 %}
+                            <span class="badge bg-warning text-dark ms-2 rounded-pill fs-6 style="box-shadow: 0 4px 10px rgba(241,196,15,0.25);">
+                                🔥 {{ current_streak }} Day Streak!
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-muted ms-2 rounded-pill fs-6 border" style="font-weight: 500;">
+                                Day 0 🫧
+                            </span>
+                        {% endif %}
+                    </h4>
+                    <div class="d-flex gap-3">
+                        <button onclick="logRoutine('AM')" class="action-btn btn-am"><i class="fas fa-sun"></i> Log AM</button>
+                        <button onclick="logRoutine('PM')" class="action-btn btn-pm"><i class="fas fa-moon"></i> Log PM</button>
+                    </div>
+                </div>
+
+                <div class="streak-container">
+                    {% for day in streak_data %}
+                    <div class="day-col {% if day.is_today %}opacity-100{% else %}opacity-75{% endif %}">
+                        <span class="day-name">{{ day.day_name }}</span>
+                        <div class="status-circle {% if day.am_done %}done{% endif %}" title="AM Routine">AM</div>
+                        <div class="status-circle {% if day.pm_done %}done{% endif %}" title="PM Routine">PM</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 mt-5">
+            <h5 class="fw-bold mb-3">Account Details</h5>
+            <div class="card border-0 rounded-4 shadow-sm p-4 bg-white">
+                <div class="row">
+                    <div class="col-sm-4 mb-3 mb-sm-0">
+                        <small class="text-uppercase text-muted fw-bold d-block mb-1">Username</small>
+                        <span class="text-dark fw-medium">{{ user.username }}</span>
+                    </div>
+                    <div class="col-sm-4 mb-3 mb-sm-0">
+                        <small class="text-uppercase text-muted fw-bold d-block mb-1">Email</small>
+                        <span class="text-dark fw-medium">{{ user.email|default:"Not provided" }}</span>
+                    </div>
+                    <div class="col-sm-4 text-sm-end">
+                        <a href="{% url 'logout' %}" class="btn btn-outline-secondary rounded-pill px-4 text-nowrap">Sign Out</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. DATABASE LOGGING LOGIC
+    // ==========================================
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function logRoutine(timeOfDay) {
+        const formData = new URLSearchParams();
+        formData.append('time_of_day', timeOfDay);
+
+        try {
+            const response = await fetch('{% url "log_routine" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                location.reload(); // Reload to update the visual circles
+            }
+        } catch (error) {
+            console.error("Error logging routine:", error);
+        }
+    }
+
+    // ==========================================
+    // 2. SYSTEM NOTIFICATION ENGINE
+    // ==========================================
+    document.addEventListener("DOMContentLoaded", () => {
+        if (Notification.permission === "default") {
+            document.getElementById('notifyBanner').style.display = 'flex';
+        }
+        checkTimeAndNotify();
+    });
+
+    function requestNotificationPermission() {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                document.getElementById('notifyBanner').style.display = 'none';
+                new Notification("GlowGuide", { body: "Reminders successfully enabled! ✨", icon: "/static/images/logo.png" });
+            }
+        });
+    }
+
+    function checkTimeAndNotify() {
+        if (Notification.permission !== "granted") return;
+
+        const lastRemindedDate = localStorage.getItem('lastRemindedDate');
+        const lastRemindedTime = localStorage.getItem('lastRemindedTime'); // 'AM' or 'PM'
+        const todayStr = new Date().toDateString();
+        const currentHour = new Date().getHours();
+
+        // Find today's AM and PM status circles in the DOM
+        const todayAmCircle = document.querySelector('.day-col.opacity-100 .status-circle[title="AM Routine"]');
+        const todayPmCircle = document.querySelector('.day-col.opacity-100 .status-circle[title="PM Routine"]');
+
+        const amDone = todayAmCircle && todayAmCircle.classList.contains('done');
+        const pmDone = todayPmCircle && todayPmCircle.classList.contains('done');
+
+        // ☀️ AM Logic: Trigger between 8 AM and 11 AM if not done
+        if (currentHour >= 8 && currentHour <= 11 && !amDone) {
+            if (lastRemindedDate !== todayStr || lastRemindedTime !== 'AM') {
+                new Notification("☀️ Time to Glow!", { body: "Don't forget your morning skincare routine!" });
+                localStorage.setItem('lastRemindedDate', todayStr);
+                localStorage.setItem('lastRemindedTime', 'AM');
+            }
+        } 
+        // 🌙 PM Logic: Trigger between 8 PM and 11 PM if not done
+        else if (currentHour >= 20 && currentHour <= 23 && !pmDone) {
+            if (lastRemindedDate !== todayStr || lastRemindedTime !== 'PM') {
+                new Notification("🌙 Wind Down & Wash!", { body: "Time to wash the day off! Log your PM routine." });
+                localStorage.setItem('lastRemindedDate', todayStr);
+                localStorage.setItem('lastRemindedTime', 'PM');
+            }
+        }
+    }
+</script>
+{% endblock %}

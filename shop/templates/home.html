@@ -1,0 +1,491 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* =========================================
+       1. GLOBAL TRANSITIONS & FOUNDATION
+       ========================================= */
+    :root {
+        --brand-green: #2ecc71;
+        --brand-peach: #ffb89e;
+        --deep-slate: #1a202c;
+    }
+
+    .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reveal.active { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+
+    /* =========================================
+       2. HERO SECTION
+       ========================================= */
+    .hero-container {
+        position: relative;
+        height: 90vh;
+        width: 100%;
+        background-color: #fcfcfc;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        opacity: 0.4;
+        animation: float 15s infinite ease-in-out alternate;
+        z-index: 0;
+    }
+    .orb-1 { width: 600px; height: 600px; background: var(--brand-green); top: -10%; left: -5%; }
+    .orb-2 { width: 500px; height: 500px; background: var(--brand-peach); bottom: -10%; right: -5%; animation-delay: -5s; }
+
+    @keyframes float {
+        from { transform: translate(0, 0); }
+        to { transform: translate(40px, 40px); }
+    }
+
+    .hero-title {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(3rem, 7vw, 4.5rem);
+        font-weight: 800;
+        color: var(--deep-slate);
+        line-height: 1.1;
+        margin-bottom: 25px;
+    }
+
+    .btn-glow {
+        background-color: var(--deep-slate);
+        color: white;
+        padding: 18px 40px;
+        border-radius: 100px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: 0.3s;
+        display: inline-block;
+    }
+    .btn-glow:hover { background-color: var(--brand-green); transform: scale(1.05); color: white; }
+
+    /* =========================================
+       3. INTERACTIVE FEATURE TILES
+       ========================================= */
+    .features-grid {
+        padding: 80px 0;
+        background: #fcfcfc;
+        position: relative;
+        z-index: 10;
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 30px;
+        padding: 50px 40px;
+        border: 1px solid #edf2f7;
+        transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        cursor: pointer;
+        height: 100%;
+    }
+    .feature-card:hover {
+        border-color: var(--brand-green);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.05);
+        transform: translateY(-10px);
+    }
+
+    .icon-box {
+        width: 70px;
+        height: 70px;
+        background: #f0fdf4;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 30px;
+        color: var(--brand-green);
+        font-size: 1.8rem;
+    }
+
+    /* =========================================
+       4. PHONE MOCKUP GLOBALS
+       ========================================= */
+    .phone-mockup {
+        width: 320px;
+        height: 650px;
+        background: #ffffff; 
+        border-radius: 45px;
+        border: 12px solid #222;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+        position: relative;
+        margin: 0 auto;
+        overflow: hidden;
+    }
+
+    .phone-notch {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 120px;
+        height: 25px;
+        background: #222;
+        border-bottom-left-radius: 15px;
+        border-bottom-right-radius: 15px;
+        z-index: 20;
+    }
+
+    .progress-text-content .badge-text {
+        color: #e56b4f;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        font-size: 0.85rem;
+        margin-bottom: 20px;
+        display: inline-block;
+        text-transform: uppercase;
+    }
+    .progress-text-content .badge-text::before { content: "●"; margin-right: 8px; }
+    .progress-text-content h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 800;
+        color: var(--deep-slate);
+        line-height: 1.1;
+        margin-bottom: 20px;
+    }
+
+    /* =========================================
+       5. CHATBOT SHOWCASE SECTION
+       ========================================= */
+    .chatbot-showcase { padding: 100px 0; background: #ffffff; overflow: hidden; }
+    .mockup-chat-ui { display: flex; flex-direction: column; height: 100%; background: #f8fafc; font-family: 'Inter', sans-serif; }
+    .m-chat-header { padding: 45px 20px 15px; background: white; border-bottom: 1px solid #edf2f7; display: flex; align-items: center; gap: 12px; }
+    .m-avatar { width: 36px; height: 36px; background: linear-gradient(135deg, #2ecc71, #78ffd6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; }
+    .m-chat-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 15px; }
+    .m-bubble { padding: 12px 16px; border-radius: 18px; font-size: 0.85rem; max-width: 85%; line-height: 1.4; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+    .m-user { background: #1a202c; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .m-ai { background: white; color: #1a202c; border: 1px solid #e2e8f0; align-self: flex-start; border-bottom-left-radius: 4px; }
+    .m-product { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; display: flex; gap: 10px; align-items: center; width: 85%; align-self: flex-start; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+    .m-chat-input { margin: 15px; padding: 12px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 30px; color: #94a3b8; font-size: 0.85rem; display: flex; justify-content: space-between; }
+
+    /* =========================================
+       6. PROGRESS SLIDER SECTION
+       ========================================= */
+    .progress-section { padding: 100px 0; background: linear-gradient(135deg, #ffffff 0%, #fff5f2 100%); overflow: hidden; }
+    .comparison-slider { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    .split-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+    .slider-line { position: absolute; top: 0; left: 50%; width: 3px; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 5; pointer-events: none; box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+    .vs-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--deep-slate); color: white; font-family: 'Inter', sans-serif; font-weight: 800; font-size: 14px; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 10; }
+    .day-badge { position: absolute; bottom: 35px; padding: 6px 16px; border-radius: 20px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); color: white; font-weight: 600; font-size: 0.8rem; z-index: 20; pointer-events: none; }
+    .day-badge.left { left: 15px; } .day-badge.right { right: 15px; }
+
+    /* =========================================
+       7. SCANNER ANIMATIONS
+       ========================================= */
+    @keyframes scanIng { 0% { top: 25%; } 100% { top: 75%; } }
+    @keyframes scanFace { 0% { top: 15%; } 100% { top: 65%; } }
+    .scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 2; pointer-events: none; }
+    .scanner-cutout { position: absolute; top: 25%; left: 15%; right: 15%; bottom: 25%; border: 2px solid rgba(255,255,255,0.8); border-radius: 12px; z-index: 3; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4); }
+</style>
+
+<section class="hero-container">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    
+    <div class="container text-center position-relative" style="z-index: 10;">
+        <h1 class="hero-title reveal">Your Personal AI<br>Skin Assistant.</h1>
+        <p class="reveal" style="font-size: 1.2rem; color: #4a5568; margin-bottom: 40px; max-width: 700px; margin-left: auto; margin-right: auto;">
+            Chat with our AI to solve skincare concerns, build your exact routine, and track real progress over time.
+        </p>
+        <div class="reveal d-flex justify-content-center gap-3">
+           <div class="reveal d-flex justify-content-center align-items-center gap-3">
+            <a href="{% url 'skin_quiz' %}" class="btn-glow shadow-lg">Build My Routine</a>
+            <a href="{% url 'ai_assistant_page' %}" class="btn-glow" style="background: white; color: var(--deep-slate); border: 2px solid #edf2f7; box-shadow: 0 10px 20px rgba(0,0,0,0.02);">
+                <i class="fas fa-sparkles me-2" style="color: #2ecc71;"></i> Try the AI
+            </a>
+        </div>
+        </div>
+    </div>
+</section>
+
+<section class="features-grid">
+    <div class="container">
+        <div class="row g-5">
+            <div class="col-md-4 reveal">
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fas fa-comments"></i></div>
+                    <h3>AI Skin Assistant</h3>
+                    <p>Have a breakout? Unsure about mixing Vitamin C and Retinol? Chat instantly with our AI expert to get safe, personalized solutions.</p>
+                </div>
+            </div>
+            <div class="col-md-4 reveal" style="transition-delay: 0.1s;">
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fas fa-bell"></i></div>
+                    <h3>Daily Reminders</h3>
+                    <p>Consistency is key. Enable push notifications so you never miss a step in your AM or PM routines, ensuring maximum efficacy.</p>
+                </div>
+            </div>
+            <div class="col-md-4 reveal" style="transition-delay: 0.2s;">
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fas fa-database"></i></div>
+                    <h3>1,700+ Products</h3>
+                    <p>Access our curated database. If our AI recommends a routine, we instantly find you the lowest price across India to buy it.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="chatbot-showcase">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-5 mb-lg-0 reveal">
+                <div class="phone-mockup">
+                    <div class="phone-notch"></div>
+                    <div class="mockup-chat-ui">
+                        <div class="m-chat-header">
+                            <div class="m-avatar"><i class="fas fa-robot"></i></div>
+                            <div style="line-height: 1.2;">
+                                <strong style="color: #1a202c; font-size: 0.95rem;">GlowGuide AI</strong><br>
+                                <small style="color: #2ecc71; font-weight: 700; font-size: 0.75rem;">● Online</small>
+                            </div>
+                        </div>
+                        <div class="m-chat-body">
+                            <div class="m-bubble m-user">Can you build me a hydrating routine? My skin feels so dry!</div>
+                            <div class="m-bubble m-ai">Hiii! ✨ I would love to! Hydration is key. Here are my holy-grail ceramide picks for you: 👇</div>
+                            <div class="m-product">
+                                <div style="width: 35px; height: 35px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-pump-soap" style="color: #2ecc71;"></i></div>
+                                <div style="line-height: 1.2;">
+                                    <strong style="font-size: 0.8rem; color: #1a202c;">Ceramide Cleanser</strong><br>
+                                    <span style="color: #2ecc71; font-size: 0.75rem; font-weight: 700;">₹450</span>
+                                </div>
+                            </div>
+                            <div class="m-product">
+                                <div style="width: 35px; height: 35px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-tint" style="color: #2ecc71;"></i></div>
+                                <div style="line-height: 1.2;">
+                                    <strong style="font-size: 0.8rem; color: #1a202c;">Hyaluronic Acid 2%</strong><br>
+                                    <span style="color: #2ecc71; font-size: 0.75rem; font-weight: 700;">₹599</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="m-chat-input">
+                            <span>e.g., How to get rid of acne...</span>
+                            <i class="fas fa-paper-plane" style="color: #1a202c;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5 offset-lg-1 progress-text-content reveal" style="transition-delay: 0.2s;">
+                <span class="badge-text" style="color: #2ecc71;">MEET YOUR AI BESTIE</span>
+                <h2 style="font-size: clamp(2.5rem, 4vw, 3.5rem);">The only app that connects chat to your routine.</h2>
+                <p style="color: #64748b; font-size: 1.15rem; line-height: 1.7;">
+                    Stop guessing. GlowGuide blends advanced AI, your active concerns, and a database of 1,700+ products to build your perfect routine instantly.
+                </p>
+                <a href="{% url 'ai_assistant_page' %}" class="btn-glow mt-4" style="background: white; color: var(--deep-slate); border: 2px solid #edf2f7; padding: 15px 35px; box-shadow: 0 10px 20px rgba(0,0,0,0.02);">
+                    <i class="fas fa-sparkles me-2" style="color: #2ecc71;"></i> Try the AI
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="progress-section" id="progress-trigger">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-5 mb-5 mb-lg-0 progress-text-content reveal">
+                <span class="badge-text">AI-Powered Consistency Lab</span>
+                <h2>Track your routine.<br>Watch your skin adapt.</h2>
+                <p style="color: #64748b; font-size: 1.15rem; line-height: 1.7; margin-bottom: 25px;">
+                    Skincare isn't an overnight miracle—it's a compounding habit. Get automated daily reminders, log your applications, and see the undeniable proof of your barrier transformation unfold.
+                </p>
+                <a href="{% url 'profile' %}" class="btn-glow" style="padding: 15px 35px;">
+                    <i class="fas fa-chart-line me-2" style="color: var(--brand-green);"></i> View Dashboard ➔
+                </a>
+            </div>
+            <div class="col-lg-7 reveal" style="transition-delay: 0.2s;">
+                <div class="phone-mockup">
+                    <div class="phone-notch"></div>
+                    <div class="comparison-slider">
+                        <img src="{% static 'images/split-face.jpg' %}" class="split-image" alt="Skin Progress Before and After">
+                        <div class="day-badge left">Day 1</div>
+                        <div class="day-badge right">Day 30</div>
+                        <div class="slider-line">
+                            <div class="vs-badge">VS</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="chatbot-showcase" style="background: #f8fafc; border-top: 1px solid #edf2f7; border-bottom: 1px solid #edf2f7;">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-5 mb-lg-0 reveal">
+                <div class="phone-mockup">
+                    <div class="phone-notch"></div>
+                    <div style="height: 100%; background: #1a202c; position: relative; overflow: hidden; border-radius: 35px;">
+                        <img src="https://images.unsplash.com/photo-1629198688000-71f23e745b6e?w=500" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;" alt="Product back label">
+                        
+                        <div class="scanner-cutout"></div>
+                        <div style="display:block; position:absolute; top:30%; left:15%; width:70%; height:3px; background:#2ecc71; box-shadow: 0 0 15px #2ecc71; z-index: 4; animation: scanIng 2s infinite alternate;"></div>
+                        
+                        <div style="position: absolute; bottom: 20px; left: 15px; right: 15px; background: white; padding: 15px 20px; border-radius: 20px; z-index: 5; box-shadow: 0 10px 20px rgba(0,0,0,0.2);">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="fas fa-check-circle" style="color: #2ecc71;"></i>
+                                <span style="color: #1a202c; font-weight: 800; font-size: 0.9rem;">Safe Ingredients</span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #64748b; line-height: 1.4;">
+                                <strong>Niacinamide</strong> detected.<br>No harsh alcohols or pore-clogging chemicals found.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-5 offset-lg-1 progress-text-content reveal" style="transition-delay: 0.2s;">
+                <span class="badge-text" style="color: #8b5cf6;">THE POCKET CHEMIST</span>
+                <h2 style="font-size: clamp(2.5rem, 4vw, 3.5rem);">Scan the bottle. Know the truth.</h2>
+                <p style="color: #64748b; font-size: 1.15rem; line-height: 1.7;">
+                    Not sure if a product will break you out? Just point your camera at the ingredient list. Our built-in OCR AI instantly reads the label and warns you about harsh chemicals and pore-cloggers before you buy.
+                </p>
+                <a href="{% url 'ai_skin_scanner' %}" class="btn-glow mt-4" style="background: white; color: var(--deep-slate); border: 2px solid #edf2f7; padding: 15px 35px; box-shadow: 0 10px 20px rgba(0,0,0,0.02);">
+                    <i class="fas fa-align-left me-2" style="color: #8b5cf6;"></i> Try the Text Scanner
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="progress-section" style="background: #ffffff;">
+    <div class="container">
+        <div class="row align-items-center">
+            
+            <div class="col-lg-5 mb-5 mb-lg-0 progress-text-content reveal">
+                <span class="badge-text" style="color: #3b82f6;">LIVE VISION AI</span>
+                <h2>A dermatologist in your front camera.</h2>
+                <p style="color: #64748b; font-size: 1.15rem; line-height: 1.7; margin-bottom: 25px;">
+                    Our advanced face scanner uses multi-point biometric vision to analyze your skin in real-time. It detects hydration levels, sebum production, and redness to generate a personalized report and routine in seconds.
+                </p>
+                <a href="{% url 'ai_skin_scanner' %}" class="btn-glow" style="padding: 15px 35px; background: #1a202c; color: white;">
+                    <i class="fas fa-camera me-2" style="color: #3b82f6;"></i> Try the Selfie Scan
+                </a>
+            </div>
+
+            <div class="col-lg-7 reveal" style="transition-delay: 0.2s;">
+                <div class="phone-mockup">
+                    <div class="phone-notch"></div>
+                    
+                    <div style="height: 100%; position: relative; background: #000; border-radius: 35px; overflow: hidden;">
+                        
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&q=80" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0.85);" alt="Face Scan">
+                        
+                        <div style="position: absolute; top: 15%; left: 10%; right: 10%; bottom: 35%; border: 2px dashed rgba(46, 204, 113, 0.6); border-radius: 30px; z-index: 2;"></div>
+                        <div style="display:block; position:absolute; top:15%; left:0; width:100%; height:4px; background:#2ecc71; box-shadow: 0 0 20px #2ecc71; z-index: 3; animation: scanFace 2.5s infinite alternate;"></div>
+                        
+                        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 25px 25px 35px; border-top-left-radius: 35px; border-top-right-radius: 35px; z-index: 5;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">Detected Profile</small>
+                                    <div class="fw-bold" style="color: #1a202c; font-size: 1.1rem;">Combination</div>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">Hydration</small>
+                                    <div class="fw-bold text-primary" style="font-size: 1.1rem;">68%</div>
+                                </div>
+                            </div>
+                            <div class="progress" style="height: 8px; border-radius: 10px; background: #e2e8f0;">
+                                <div class="progress-bar bg-primary progress-bar-animated progress-bar-striped" style="width: 68%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<section class="chatbot-showcase" style="background: #fcfcfc;">
+    <div class="container">
+        <div class="row align-items-center">
+            
+            <div class="col-lg-6 mb-5 mb-lg-0 order-lg-2 reveal">
+                <div class="phone-mockup">
+                    <div class="phone-notch"></div>
+                    <div style="height: 100%; background: #f8fafc; padding-top: 60px; font-family: 'Inter', sans-serif; border-radius: 35px; overflow: hidden;">
+                        
+                        <div class="text-center mb-4">
+                            <div style="width: 120px; height: 120px; background: white; border-radius: 20px; margin: 0 auto 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=300" style="width: 80%; object-fit: contain;" alt="Serum">
+                            </div>
+                            <h5 class="fw-bold" style="color: #1a202c; font-size: 1.1rem; margin: 0;">Glow Serum 2%</h5>
+                            <small class="text-muted">Best Price Found</small>
+                        </div>
+                        
+                        <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="background: white; border: 2px solid #2ecc71; border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.1);">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width: 25px; height: 25px; background: #2ecc71; border-radius: 5px; color: white; display: flex; align-items: center; justify-content: center; font-size: 10px;"><i class="fas fa-check"></i></div>
+                                    <strong style="font-size: 0.9rem; color: #1a202c;">GlowGuide Store</strong>
+                                </div>
+                                <strong style="color: #2ecc71; font-size: 1.1rem;">₹450</strong>
+                            </div>
+                            
+                            <div style="background: white; border: 1px solid #edf2f7; border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 0.9rem; color: #64748b; margin-left: 33px;">MegaMart</strong>
+                                <strong style="color: #1a202c; font-size: 1rem;">₹599</strong>
+                            </div>
+                            
+                            <div style="background: white; border: 1px solid #edf2f7; border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 0.9rem; color: #64748b; margin-left: 33px;">Beauty Hub</strong>
+                                <strong style="color: #1a202c; font-size: 1rem;">₹650</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5 order-lg-1 progress-text-content reveal" style="transition-delay: 0.2s;">
+                <span class="badge-text" style="color: #f59e0b;">SMART CART</span>
+                <h2 style="font-size: clamp(2.5rem, 4vw, 3.5rem);">Never overpay for skincare again.</h2>
+                <p style="color: #64748b; font-size: 1.15rem; line-height: 1.7;">
+                    Finding the perfect routine is only half the battle. Our engine actively scans the web to instantly compare prices across major retailers, ensuring you always secure your holy-grail products at the absolute lowest cost.
+                </p>
+                <a href="{% url 'shop' %}" class="btn-glow mt-4" style="background: #1a202c; color: white; padding: 15px 35px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
+                    <i class="fas fa-shopping-bag me-2" style="color: #f59e0b;"></i> Explore the Catalog
+                </a>
+            </div>
+            
+        </div>
+    </div>
+</section>
+
+<script>
+    // --- 1. STANDARD SCROLL REVEAL LOGIC ---
+    const observerOptions = { threshold: 0.1 };
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // --- 2. MOUSE PARALLAX FOR HERO ORBS ---
+    document.addEventListener('mousemove', (e) => {
+        const x = (window.innerWidth / 2 - e.pageX) / 50;
+        const y = (window.innerHeight / 2 - e.pageY) / 50;
+        document.querySelectorAll('.glow-orb').forEach(orb => {
+            orb.style.transform = `translate(${x}px, ${y}px)`;
+        });
+    });
+</script>
+{% endblock %}

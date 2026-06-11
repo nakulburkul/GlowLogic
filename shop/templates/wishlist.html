@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-3 py-md-5">
+    <div class="text-center mb-4 mb-md-5">
+        <h1 class="display-5 fw-bold text-dark mb-2">❤️ My Wishlist</h1>
+        <p class="text-muted small">Your curated collection of GlowGuide favorites.</p>
+    </div>
+
+    <!-- 🚀 MOBILE OPTIMIZED GRID: row-cols-2 for side-by-side cards -->
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2 g-md-4 mb-5">
+        {% for item in wishlist_items %}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden transition-hover">
+                
+                <a href="{% url 'product_detail' item.product.id %}" class="text-decoration-none">
+                    <div class="bg-light p-2 p-md-3 text-center position-relative border-bottom">
+                        <!-- 🚀 FIX 1: 3-Tier Image Fallback -->
+                        {% if item.product.image %}
+                            <img src="{{ item.product.image.url }}" class="img-fluid" alt="{{ item.product.name }}" style="height: 150px; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                        {% elif item.product.image_filename %}
+                            <img src="{% static 'images/' %}{{ item.product.image_filename }}" class="img-fluid" alt="{{ item.product.name }}" style="height: 150px; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                        {% else %}
+                            <img src="{% static 'images/' %}{{ item.product.local_image_filename|default:'default.jpg' }}" class="img-fluid" alt="{{ item.product.name }}" style="height: 150px; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                        {% endif %}
+                    </div>
+                </a>
+                
+                <div class="card-body d-flex flex-column p-2 p-md-3">
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill mb-1 align-self-start" style="font-size: 0.65rem;">{{ item.product.category }}</span>
+                    
+                    <a href="{% url 'product_detail' item.product.id %}" class="text-decoration-none text-dark">
+                        <h5 class="card-title fw-bold mb-2" style="font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.4rem;">
+                            {{ item.product.name }}
+                        </h5>
+                    </a>
+                    
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <!-- 🚀 FIX 2: Smart Price Logic -->
+                            {% if item.product.price and item.product.price != "None" and item.product.price != "0.00" and item.product.price != 0 and item.product.price != "0" %}
+                                <span class="fw-bold text-success" style="font-size: 0.95rem;">₹{{ item.product.price|stringformat:"s"|cut:"₹"|cut:" " }}</span>
+                            {% elif item.product.amazon_price and item.product.amazon_price != "None" and item.product.amazon_price != "" %}
+                                <span class="fw-bold text-success" style="font-size: 0.95rem;">₹{{ item.product.amazon_price|stringformat:"s"|cut:"₹"|cut:" " }}</span>
+                            {% elif item.product.clean_price and item.product.clean_price != "None" and item.product.clean_price != "₹None" and item.product.clean_price != "₹" %}
+                                <span class="fw-bold text-success" style="font-size: 0.95rem;">{{ item.product.clean_price }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary rounded-pill" style="font-size: 0.75rem;">Check Site</span>
+                            {% endif %}
+                        </div>
+                        
+                        <a href="{% url 'toggle_wishlist' item.product.id %}" class="btn btn-outline-danger btn-sm w-100 rounded-pill fw-bold" style="font-size: 0.8rem;">
+                            💔 Remove
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <h3 class="text-muted fw-bold mb-3">Your wishlist is empty! 😢</h3>
+            <p class="text-secondary mb-4">Go explore the shop and save some products you love.</p>
+            <a href="{% url 'shop' %}" class="btn btn-dark rounded-pill px-4 py-2">Explore Shop</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- "Similar Finds" Section (Also fixed for Mobile, Images, and Prices) -->
+    {% if recommended_products %}
+    <div class="mt-4 pt-4 border-top">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3">
+            <h4 class="fw-bold m-0" style="font-family: 'Playfair Display', serif;">
+                ✨ Similar Finds
+            </h4>
+            <span class="text-muted small">Based on your wishlist</span>
+        </div>
+
+        <!-- 🚀 Mobile Grid: row-cols-2 -->
+        <div class="row row-cols-2 row-cols-md-4 g-2 g-md-4">
+            {% for p in recommended_products %}
+            <div class="col">
+                <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden product-card transition-hover">
+                    <a href="{% url 'product_detail' p.id %}" class="text-decoration-none">
+                        <div class="bg-light p-2 p-md-3 text-center border-bottom">
+                            {% if p.image %}
+                                <img src="{{ p.image.url }}" class="img-fluid" alt="{{ p.name }}" style="height: 140px; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                            {% elif p.image_filename %}
+                                <img src="{% static 'images/' %}{{ p.image_filename }}" class="img-fluid" alt="{{ p.name }}" style="height: 140px; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                            {% else %}
+                                <img src="{% static 'images/' %}{{ p.local_image_filename|default:'default.jpg' }}" class="img-fluid" alt="{{ p.name }}" style="height: 140px; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                            {% endif %}
+                        </div>
+                    </a>
+                    
+                    <div class="card-body d-flex flex-column p-2 p-md-3">
+                        <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill mb-1 align-self-start" style="font-size: 0.6rem;">Alternative</span>
+                        
+                        <a href="{% url 'product_detail' p.id %}" class="text-decoration-none text-dark">
+                            <h5 class="card-title fw-bold mb-2" style="font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.4rem;">
+                                {{ p.name }}
+                            </h5>
+                        </a>
+                        
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                {% if p.price and p.price != "None" and p.price != "0.00" and p.price != 0 and p.price != "0" %}
+                                    <span class="fw-bold text-success" style="font-size: 0.95rem;">₹{{ p.price|stringformat:"s"|cut:"₹"|cut:" " }}</span>
+                                {% elif p.amazon_price and p.amazon_price != "None" and p.amazon_price != "" %}
+                                    <span class="fw-bold text-success" style="font-size: 0.95rem;">₹{{ p.amazon_price|stringformat:"s"|cut:"₹"|cut:" " }}</span>
+                                {% elif p.clean_price and p.clean_price != "None" and p.clean_price != "₹None" and p.clean_price != "₹" %}
+                                    <span class="fw-bold text-success" style="font-size: 0.95rem;">{{ p.clean_price }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary rounded-pill" style="font-size: 0.75rem;">Check Site</span>
+                                {% endif %}
+                            </div>
+                            
+                            <a href="{% url 'product_detail' p.id %}" class="btn btn-dark btn-sm w-100 rounded-pill fw-bold">
+                                View Deal
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+    .transition-hover {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .transition-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,449 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .routine-header {
+        padding: 15px 20px; border-radius: 10px; font-weight: bold; font-size: 1.2rem; margin-bottom: 20px; font-family: 'Playfair Display', serif;
+    }
+    .am-header { background-color: #fff9c4; color: #f39c12; }
+    .pm-header { background-color: #e8eaf6; color: #2c3e50; }
+    
+    .routine-card {
+        background: white; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        border: 1px solid #edf2f7; border-left: 4px solid #2ecc71; overflow: hidden; 
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .routine-card.pm-card { border-left-color: #34495e; }
+    .routine-card:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
+    
+    .step-main { padding: 15px; display: flex; align-items: center; }
+    .step-img { width: 70px; height: 70px; object-fit: contain; mix-blend-mode: multiply; }
+    
+    .alt-dropdown { background-color: #f8fafc; border-top: 1px dashed #cbd5e1; padding: 15px; }
+    .alt-item {
+        background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+        padding: 12px; margin-bottom: 10px; transition: transform 0.2s;
+    }
+    .alt-item:hover { border-color: #cbd5e1; transform: translateX(4px); }
+
+    .budget-card { background-color: #f0fdf4; border: 1px solid #2ecc71; border-radius: 15px; padding: 20px; max-width: 500px; margin: 0 auto 40px; }
+    
+    .wishlist-btn-routine { transition: transform 0.2s; display: inline-block; cursor: pointer; }
+    .wishlist-btn-routine:hover { transform: scale(1.15); }
+
+    .guide-timeline { border-left: 2px solid #e2e8f0; position: relative; padding-left: 20px; margin-left: 10px; }
+    .guide-dot { position: absolute; width: 14px; height: 14px; border-radius: 50%; left: -8px; top: 5px; }
+    .am-dot { background-color: #fde047; border: 3px solid #fff9c4; }
+    .pm-dot { background-color: #93c5fd; border: 3px solid #e8eaf6; }
+
+    @media (max-width: 768px) {
+        .step-main { align-items: flex-start; }
+        .action-col { align-items: flex-start !important; margin-top: 10px; flex-direction: row !important; width: 100%; justify-content: space-between; }
+    }
+
+    /* 🚀 BULLETPROOF PDF / PRINT STYLING */
+    .print-only-header { display: none; }
+    
+    @media print {
+        @page { size: A4 portrait; margin: 1.2cm; } 
+        
+        body { background: white !important; font-size: 11pt; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        
+        /* 1. Hide the Web UI completely */
+        .glow-navbar, footer, .floating-chat-btn, .mobile-bottom-nav, .d-print-none, .alt-dropdown, .collapse { display: none !important; }
+        .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        
+        /* 2. Bind the Title and Info tightly together on the first page */
+        .print-wrapper { page-break-inside: avoid !important; }
+        
+        .print-only-header { display: block; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2ecc71; padding-bottom: 10px; }
+        .print-only-header h1 { font-family: 'Playfair Display', serif; color: #2ecc71 !important; font-weight: 800; font-size: 24px; margin-bottom: 4px; }
+        .print-only-header p { color: #555 !important; margin-bottom: 0; font-size: 12pt; }
+        
+        .budget-card { border: 2px solid #2ecc71 !important; padding: 10px; margin-bottom: 20px !important; }
+        
+        /* 3. KILL BOOTSTRAP FLEXBOX TO FORCE VERTICAL STACKING */
+        .row { display: block !important; margin: 0 !important; }
+        .col-12, .col-md-6, .col-lg-6 { 
+            display: block !important; 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            flex: none !important; 
+            padding: 0 !important; 
+            margin-bottom: 15px !important;
+            page-break-inside: auto !important; /* Allow columns to split across pages */
+        }
+        
+        /* 4. Keep individual items intact, but allow the list to flow */
+        .routine-header { page-break-after: avoid !important; background: #f8f9fa !important; border: 1px solid #ddd !important; }
+        
+        .routine-card, .guide-step-item {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            margin-bottom: 8px !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: none !important;
+            padding: 5px !important;
+        }
+
+        .step-img { width: 55px !important; height: 55px !important; }
+        h6 { font-size: 11pt !important; margin-bottom: 2px !important; }
+        
+        /* 5. Clean up Perfect Pairing */
+        .perfect-pairing-box {
+            background: white !important; 
+            border: 2px dashed #d81b60 !important; 
+            padding: 15px !important;
+            margin-top: 15px !important;
+            page-break-inside: avoid !important;
+        }
+        .perfect-pairing-box .row { display: flex !important; flex-direction: row !important; align-items: center !important; }
+        .perfect-pairing-box .col-md-5 { width: 45% !important; display: flex !important; flex-direction: column !important; margin-bottom: 0 !important; }
+        .perfect-pairing-box .col-md-1 { width: 10% !important; display: flex !important; justify-content: center !important; margin-bottom: 0 !important; }
+        
+        .bg-white { background-color: white !important; }
+        .shadow-sm { box-shadow: none !important; }
+        .guide-timeline { border-left: 2px solid #ccc !important; padding-left: 15px !important; margin-left: 5px !important; }
+        .p-4.bg-white.rounded-4 { padding: 15px !important; border: 1px solid #ddd !important; }
+    }
+</style>
+
+<div class="container py-4 py-md-5">
+    
+    <div class="print-wrapper">
+        <div class="print-only-header">
+            <h1>✨ GlowLogic Digital Prescription</h1>
+            <p><strong>Patient Profile:</strong> {{ skin_type }} Skin | <strong>Generated On:</strong> {% now "F j, Y" %}</p>
+        </div>
+
+        <div class="text-center mb-4 d-print-none">
+            <h2 class="fw-bold" style="font-family: 'Playfair Display', serif;">Your GlowGuide Routine</h2>
+            <p class="text-muted fs-5 mb-1">Curated perfectly for <strong>{{ skin_type }}</strong> skin.</p>
+        </div>
+
+        <div class="budget-card text-center shadow-sm">
+            <h6 class="text-success fw-bold text-uppercase mb-2">✓ Budget Goal Met</h6>
+            <div class="d-flex justify-content-center align-items-center gap-4">
+                <div>
+                    <p class="text-muted small mb-0">Total Cost</p>
+                    <h3 class="fw-bold mb-0 text-dark" id="total-cost-display">₹{{ total_spent }}</h3>
+                </div>
+                <div style="width: 2px; height: 40px; background: #ccc;"></div>
+                <div>
+                    <p class="text-muted small mb-0">Your Target Budget</p>
+                    <h3 class="fw-bold mb-0 text-muted">₹{{ budget }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 g-md-5">
+        
+        <div class="col-lg-6">
+            <div class="routine-header am-header">🌞 Morning Routine (AM)</div>
+            
+            {% for product in am_routine %}
+                <div class="routine-card">
+                    <div class="step-main">
+                        <div style="min-width: 70px; text-align: center;">
+                            <a href="{% url 'product_detail' product.id %}" id="link-img-am-{{ product.id }}">
+                                {% if product.image %}
+                                    <img id="img-am-{{ product.id }}" src="{{ product.image.url }}" class="step-img" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                                {% elif product.image_filename %}
+                                    <img id="img-am-{{ product.id }}" src="{% static 'images/' %}{{ product.image_filename }}" class="step-img" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                                {% else %}
+                                    <img id="img-am-{{ product.id }}" src="{% static 'images/' %}{{ product.local_image_filename|default:'default.jpg' }}" class="step-img" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                                {% endif %}
+                            </a>
+                        </div>
+
+                        <div class="flex-grow-1 px-2 px-md-3">
+                            <span class="badge bg-light text-dark border mb-1" style="font-size: 0.65rem;">{{ product.category }}</span>
+                            <a href="{% url 'product_detail' product.id %}" id="link-name-am-{{ product.id }}" class="text-decoration-none">
+                                <h6 id="name-am-{{ product.id }}" class="mb-1 fw-bold text-dark transition-hover" style="font-size: 0.9rem; line-height: 1.3;">{{ product.name|truncatechars:50 }}</h6>
+                            </a>
+                            
+                            <button class="btn btn-sm btn-light border shadow-sm rounded-pill text-dark fw-bold mt-2 d-print-none" style="font-size: 0.7rem;" data-bs-toggle="collapse" data-bs-target="#alt-am-{{ product.id }}">
+                                Alternatives ▾
+                            </button>
+                        </div>
+
+                        <div class="d-flex flex-column align-items-end justify-content-center gap-2 action-col" style="min-width: 80px;">
+                            <a href="{% url 'toggle_wishlist' product.id %}" class="wishlist-btn-routine text-decoration-none d-print-none">
+                                <i class="{% if product.id in saved_product_ids %}fas fa-heart text-danger{% else %}far fa-heart text-muted{% endif %} fs-5"></i>
+                            </a>
+                            <div id="price-am-{{ product.id }}" class="fw-bold text-success text-end" style="font-size: 1.05rem;">₹{{ product.lowest_price|default:product.price }}</div>
+                        </div>
+                    </div>
+
+                    <div class="collapse alt-dropdown" id="alt-am-{{ product.id }}">
+                        <div class="mb-3"><span class="small fw-bold text-muted" style="letter-spacing: 0.5px;">RECOMMENDED FOR YOU</span></div>
+                        
+                        {% if product.replacements %}
+                            {% for alt in product.replacements %}
+                            <div class="alt-item">
+                                <div class="d-flex align-items-center w-100">
+                                    <div style="min-width: 50px; text-align: center;">
+                                        {% if alt.image %}
+                                            <img id="alt-img-am-{{ product.id }}-{{ alt.id }}" src="{{ alt.image.url }}" style="width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                                        {% elif alt.image_filename %}
+                                            <img id="alt-img-am-{{ product.id }}-{{ alt.id }}" src="{% static 'images/' %}{{ alt.image_filename }}" style="width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                                        {% else %}
+                                            <img id="alt-img-am-{{ product.id }}-{{ alt.id }}" src="{% static 'images/' %}{{ alt.local_image_filename|default:'default.jpg' }}" style="width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1 px-2">
+                                        <a href="{% url 'product_detail' alt.id %}" class="text-dark fw-bold text-decoration-none d-block" style="font-size: 0.8rem; line-height: 1.2;">{{ alt.name|truncatechars:35 }}</a>
+                                        <div class="text-success small fw-bold mt-1">₹{{ alt.lowest_price|default:alt.price }}</div>
+                                    </div>
+                                    
+                                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 ms-2 fw-bold" style="font-size: 0.7rem;" onclick="swapProduct('am-{{ product.id }}', 'am-{{ product.id }}-{{ alt.id }}', '{{ alt.name|escapejs }}', {{ alt.lowest_price|default:alt.price|default:0 }}, '{{ alt.smart_how_to|escapejs }}', '{{ alt.smart_actives|escapejs }}', {{ alt.id }})">
+                                        🔄 Swap
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small mb-0">No direct alternatives found in stock for your skin type.</p>
+                        {% endif %}
+
+                        <div class="text-center mt-3 pt-3 border-top">
+                             <a href="{% url 'product_detail' product.id %}" class="small text-primary fw-bold text-decoration-none">➔ View Original Product Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="p-4 bg-light rounded text-center text-muted">Not enough products to complete an AM routine.</div>
+            {% endfor %}
+        </div>
+
+        <div class="col-lg-6">
+            <div class="routine-header pm-header">🌙 Night Routine (PM)</div>
+            
+            {% for product in pm_routine %}
+                <div class="routine-card pm-card">
+                    <div class="step-main">
+                        <div style="min-width: 70px; text-align: center;">
+                            <a href="{% url 'product_detail' product.id %}" id="link-img-pm-{{ product.id }}">
+                                {% if product.image %}
+                                    <img id="img-pm-{{ product.id }}" src="{{ product.image.url }}" class="step-img" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                                {% elif product.image_filename %}
+                                    <img id="img-pm-{{ product.id }}" src="{% static 'images/' %}{{ product.image_filename }}" class="step-img" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                                {% else %}
+                                    <img id="img-pm-{{ product.id }}" src="{% static 'images/' %}{{ product.local_image_filename|default:'default.jpg' }}" class="step-img" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                                {% endif %}
+                            </a>
+                        </div>
+
+                        <div class="flex-grow-1 px-2 px-md-3">
+                            <span class="badge bg-light text-dark border mb-1" style="font-size: 0.65rem;">{{ product.category }}</span>
+                            <a href="{% url 'product_detail' product.id %}" id="link-name-pm-{{ product.id }}" class="text-decoration-none">
+                                <h6 id="name-pm-{{ product.id }}" class="mb-1 fw-bold text-dark transition-hover" style="font-size: 0.9rem; line-height: 1.3;">{{ product.name|truncatechars:50 }}</h6>
+                            </a>
+                            
+                            <button class="btn btn-sm btn-light border shadow-sm rounded-pill text-dark fw-bold mt-2 d-print-none" style="font-size: 0.7rem;" data-bs-toggle="collapse" data-bs-target="#alt-pm-{{ product.id }}">
+                                Alternatives ▾
+                            </button>
+                        </div>
+
+                        <div class="d-flex flex-column align-items-end justify-content-center gap-2 action-col" style="min-width: 80px;">
+                            <a href="{% url 'toggle_wishlist' product.id %}" class="wishlist-btn-routine text-decoration-none d-print-none">
+                                <i class="{% if product.id in saved_product_ids %}fas fa-heart text-danger{% else %}far fa-heart text-muted{% endif %} fs-5"></i>
+                            </a>
+                            <div id="price-pm-{{ product.id }}" class="fw-bold text-success text-end" style="font-size: 1.05rem;">₹{{ product.lowest_price|default:product.price }}</div>
+                        </div>
+                    </div>
+
+                    <div class="collapse alt-dropdown" id="alt-pm-{{ product.id }}">
+                        <div class="mb-3"><span class="small fw-bold text-muted" style="letter-spacing: 0.5px;">RECOMMENDED FOR YOU</span></div>
+                        
+                        {% if product.replacements %}
+                            {% for alt in product.replacements %}
+                            <div class="alt-item">
+                                <div class="d-flex align-items-center w-100">
+                                    <div style="min-width: 50px; text-align: center;">
+                                        {% if alt.image %}
+                                            <img id="alt-img-pm-{{ product.id }}-{{ alt.id }}" src="{{ alt.image.url }}" style="width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                                        {% elif alt.image_filename %}
+                                            <img id="alt-img-pm-{{ product.id }}-{{ alt.id }}" src="{% static 'images/' %}{{ alt.image_filename }}" style="width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                                        {% else %}
+                                            <img id="alt-img-pm-{{ product.id }}-{{ alt.id }}" src="{% static 'images/' %}{{ alt.local_image_filename|default:'default.jpg' }}" style="width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1 px-2">
+                                        <a href="{% url 'product_detail' alt.id %}" class="text-dark fw-bold text-decoration-none d-block" style="font-size: 0.8rem; line-height: 1.2;">{{ alt.name|truncatechars:35 }}</a>
+                                        <div class="text-success small fw-bold mt-1">₹{{ alt.lowest_price|default:alt.price }}</div>
+                                    </div>
+                                    
+                                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 ms-2 fw-bold" style="font-size: 0.7rem;" onclick="swapProduct('pm-{{ product.id }}', 'pm-{{ product.id }}-{{ alt.id }}', '{{ alt.name|escapejs }}', {{ alt.lowest_price|default:alt.price|default:0 }}, '{{ alt.smart_how_to|escapejs }}', '{{ alt.smart_actives|escapejs }}', {{ alt.id }})">
+                                        🔄 Swap
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small mb-0">No direct alternatives found in stock for your skin type.</p>
+                        {% endif %}
+
+                        <div class="text-center mt-3 pt-3 border-top">
+                             <a href="{% url 'product_detail' product.id %}" class="small text-primary fw-bold text-decoration-none">➔ View Original Product Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="p-4 bg-light rounded text-center text-muted">Not enough products to complete a PM routine.</div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    {% if combo_serum and combo_moisturizer %}
+    <div class="mt-5 p-4 rounded-4 perfect-pairing-box" style="background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%);">
+        <h4 class="fw-bold text-center mb-4" style="font-family: 'Playfair Display', serif; color: #d81b60;">🌟 Your Perfect Pairing</h4>
+        <p class="text-center text-muted small mb-4 d-print-none">We paired your active serum with your moisturizer for maximum absorption and barrier protection.</p>
+        
+        <div class="row align-items-stretch justify-content-center text-center px-md-5">
+            <div class="col-md-5 mb-3 mb-md-0">
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center transition-hover">
+                    <span class="badge bg-light text-dark border mb-3">Step 1: Treat</span>
+                    {% if combo_serum.image %}
+                        <img src="{{ combo_serum.image.url }}" style="height: 100px; object-fit: contain; margin-bottom: 15px; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                    {% endif %}
+                    <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.95rem;">{{ combo_serum.name|truncatechars:45 }}</h6>
+                </div>
+            </div>
+            
+            <div class="col-md-1 d-flex align-items-center justify-content-center my-2 my-md-0">
+                <span class="fw-bold fs-2 text-danger opacity-75">+</span>
+            </div>
+            
+            <div class="col-md-5">
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center transition-hover">
+                    <span class="badge bg-light text-dark border mb-3">Step 2: Lock it in</span>
+                    {% if combo_moisturizer.image %}
+                        <img src="{{ combo_moisturizer.image.url }}" style="height: 100px; object-fit: contain; margin-bottom: 15px; mix-blend-mode: multiply;" onerror="this.style.display='none';">
+                    {% endif %}
+                    <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.95rem;">{{ combo_moisturizer.name|truncatechars:45 }}</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-5 mb-5 pt-4 border-top">
+        <div class="text-center mb-5 d-print-none">
+            <h3 class="fw-bold" style="font-family: 'Playfair Display', serif; color: #2c3e50;">📝 Step-by-Step Application Guide</h3>
+            <p class="text-muted small">Exactly how to layer your curated routine and the key actives targeting your concerns.</p>
+        </div>
+        
+        <div class="row g-4 g-md-5">
+            <div class="col-lg-6">
+                <div class="p-4 bg-white rounded-4 shadow-sm h-100" style="border: 1px solid #fef08a;">
+                    <h5 class="fw-bold mb-4" style="color: #ca8a04;">🌞 Morning Application</h5>
+                    <div class="guide-timeline" style="border-left-color: #fef08a;">
+                        {% for product in am_routine %}
+                        <div class="guide-step-item position-relative">
+                            <div class="guide-dot am-dot"></div>
+                            <span class="badge bg-light text-dark border mb-2">Step {{ forloop.counter }}: {{ product.category }}</span>
+                            <h6 id="timeline-name-am-{{ product.id }}" class="fw-bold mb-2 text-dark">{{ product.name|truncatechars:45 }}</h6>
+                            <p class="small text-muted mb-2 lh-sm">
+                                <span class="d-block mb-1 text-primary fw-bold"><i class="far fa-clock me-1"></i> Ideal Time: {% if 'Sunscreen' in product.category %}15-20 mins before sun exposure{% else %}Morning (After waking up){% endif %}</span>
+                                <strong class="text-dark">How to use:</strong> 
+                                <span id="timeline-howto-am-{{ product.id }}">{{ product.smart_how_to }}</span>
+                            </p>
+                            <div class="bg-success-subtle p-2 rounded-3 border border-success-subtle mt-2">
+                                <span class="d-block small text-success fw-bold mb-1"><i class="fas fa-leaf me-1"></i> Key Benefits & Actives:</span>
+                                <span id="timeline-actives-am-{{ product.id }}" class="small text-success d-block lh-sm" style="font-size: 0.75rem;">
+                                    {{ product.smart_actives }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="p-4 bg-white rounded-4 shadow-sm h-100" style="border: 1px solid #bfdbfe;">
+                    <h5 class="fw-bold mb-4" style="color: #2563eb;">🌙 Night Application</h5>
+                    <div class="guide-timeline" style="border-left-color: #bfdbfe;">
+                        {% for product in pm_routine %}
+                        <div class="guide-step-item position-relative">
+                            <div class="guide-dot pm-dot"></div>
+                            <span class="badge bg-light text-dark border mb-2">Step {{ forloop.counter }}: {{ product.category }}</span>
+                            <h6 id="timeline-name-pm-{{ product.id }}" class="fw-bold mb-2 text-dark">{{ product.name|truncatechars:45 }}</h6>
+                            <p class="small text-muted mb-2 lh-sm">
+                                <span class="d-block mb-1 fw-bold" style="color: #6366f1 !important;"><i class="far fa-clock me-1"></i> Ideal Time: {% if 'Cleanser' in product.category %}Evening (To remove daily buildup){% elif 'Night Cream' in product.category %}Right before bed{% else %}Evening{% endif %}</span>
+                                <strong class="text-dark">How to use:</strong> 
+                                <span id="timeline-howto-pm-{{ product.id }}">{{ product.smart_how_to }}</span>
+                            </p>
+                            <div class="bg-primary-subtle p-2 rounded-3 border border-primary-subtle mt-2">
+                                <span class="d-block small text-primary fw-bold mb-1"><i class="fas fa-moon me-1"></i> Key Benefits & Actives:</span>
+                                <span id="timeline-actives-pm-{{ product.id }}" class="small text-primary d-block lh-sm" style="font-size: 0.75rem;">
+                                    {{ product.smart_actives }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-5 mb-5 d-print-none">
+        <button onclick="window.print()" class="btn btn-outline-success border-2 btn-lg px-4 rounded-pill transition-hover shadow-sm fw-bold me-md-2 mb-3 mb-md-0">
+            <i class="fas fa-file-pdf me-2"></i> Download as PDF
+        </button>
+        <a href="{% url 'shop' %}" class="btn btn-dark btn-lg px-5 rounded-pill transition-hover shadow-sm fw-bold mb-3 mb-md-0">Explore Full Shop</a>
+    </div>
+</div>
+
+<script>
+    function swapProduct(mainId, altUniqueId, newName, newPrice, newHowTo, newActives, newProductId) {
+        let newImgSrc = document.getElementById('alt-img-' + altUniqueId).src;
+        document.getElementById('img-' + mainId).src = newImgSrc;
+
+        document.getElementById('name-' + mainId).innerText = newName;
+
+        let newUrl = '/product/' + newProductId + '/';
+        let linkImg = document.getElementById('link-img-' + mainId);
+        let linkName = document.getElementById('link-name-' + mainId);
+        if(linkImg) linkImg.href = newUrl;
+        if(linkName) linkName.href = newUrl;
+
+        let timelineNameEl = document.getElementById('timeline-name-' + mainId);
+        if (timelineNameEl) {
+            timelineNameEl.innerText = newName;
+        }
+
+        let timelineHowToEl = document.getElementById('timeline-howto-' + mainId);
+        if (timelineHowToEl) {
+            timelineHowToEl.innerText = newHowTo;
+        }
+
+        let timelineActivesEl = document.getElementById('timeline-actives-' + mainId);
+        if (timelineActivesEl) {
+            timelineActivesEl.innerText = newActives;
+        }
+
+        let priceEl = document.getElementById('price-' + mainId);
+        let oldPrice = parseFloat(priceEl.innerText.replace(/[^0-9.]/g, '')) || 0;
+        let totalEl = document.getElementById('total-cost-display');
+        let currentTotal = parseFloat(totalEl.innerText.replace(/[^0-9.]/g, '')) || 0;
+
+        let updatedTotal = currentTotal - oldPrice + parseFloat(newPrice);
+        totalEl.innerText = '₹' + updatedTotal.toFixed(1);
+
+        priceEl.innerText = '₹' + parseFloat(newPrice);
+
+        let collapseEl = document.getElementById('alt-' + mainId);
+        if (collapseEl) {
+            let bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
+            if (bsCollapse) {
+                bsCollapse.hide();
+            }
+        }
+    }
+</script>
+{% endblock %}

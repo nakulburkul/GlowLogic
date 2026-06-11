@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <h2 class="fw-bold m-0" style="font-family: 'Playfair Display', serif;">📈 Admin Analytics</h2>
+        <a href="/admin/" class="btn btn-outline-dark rounded-pill px-4">Exit to DB</a>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);">
+                <h1 class="display-4 fw-bold text-primary">{{ total_users }}</h1>
+                <p class="text-muted fw-bold text-uppercase mb-0 tracking-wider">Total Users</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%);">
+                <h1 class="display-4 fw-bold" style="color: #d81b60;">{{ total_products }}</h1>
+                <p class="text-muted fw-bold text-uppercase mb-0 tracking-wider">Products Live</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);">
+                <h1 class="display-4 fw-bold text-success">{{ wishlist_saves }}</h1>
+                <p class="text-muted fw-bold text-uppercase mb-0 tracking-wider">Total Wishlist Saves</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
+                <h5 class="fw-bold mb-4">Product Category Distribution</h5>
+                <div style="height: 300px; width: 100%;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
+                <h5 class="fw-bold mb-4">Quick Actions</h5>
+                <p class="text-muted mb-4">Run manual server commands without opening the terminal.</p>
+                
+                <div class="d-grid gap-3">
+                    <button class="btn btn-outline-success py-3 rounded-3 text-start fw-bold" onclick="alert('In production, this would trigger the Python Management Command script!')">
+                        <i class="fas fa-envelope me-2"></i> Trigger Predictive Restock Emails
+                    </button>
+                    <a href="/admin/shop/product/add/" class="btn btn-outline-dark py-3 rounded-3 text-start fw-bold">
+                        <i class="fas fa-plus me-2"></i> Add New Product Manually
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        const labels = JSON.parse('{{ chart_labels|safe }}');
+        const data = JSON.parse('{{ chart_data|safe }}');
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#d81b60', '#2ecc71', '#3498db', '#f1c40f'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                },
+                cutout: '70%' // Makes the donut hole larger for a modern look
+            }
+        });
+    });
+</script>
+{% endblock %}

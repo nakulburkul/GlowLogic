@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Premium Quiz UI Styling */
+    .quiz-step {
+        display: none;
+        animation: fadeIn 0.4s ease-in-out;
+    }
+    .quiz-step.active {
+        display: block;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Hidden Radio Buttons */
+    .quiz-option input[type="radio"] {
+        display: none;
+    }
+    /* Large Clickable Cards */
+    .quiz-option label {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        border: 2px solid #e9ecef;
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: white;
+        height: 100%;
+    }
+    .quiz-option label:hover {
+        border-color: #d81b60;
+        background-color: #fffafb;
+        transform: translateY(-2px);
+    }
+    /* Selected State */
+    .quiz-option input[type="radio"]:checked + label {
+        border-color: #d81b60;
+        background-color: #fff0f5;
+        box-shadow: 0 4px 15px rgba(216, 27, 96, 0.15);
+    }
+    .emoji-icon {
+        font-size: 2rem;
+        margin-right: 15px;
+    }
+</style>
+
+<div class="container py-5" style="max-width: 800px;">
+    
+    <div class="text-center mb-5">
+        <span class="badge bg-dark rounded-pill px-3 py-2 mb-3">Step <span id="currentStepNum">1</span> of 5</span>
+        <h1 class="fw-bold mb-2" style="font-family: 'Playfair Display', serif; color: #2c3e50;">Let's build your routine.</h1>
+        <div class="progress mt-4 rounded-pill" style="height: 8px; max-width: 300px; margin: 0 auto;">
+            <div class="progress-bar" id="quizProgress" role="progressbar" style="width: 20%; background-color: #d81b60;"></div>
+        </div>
+    </div>
+
+    <div class="card shadow-lg border-0 rounded-4 p-4 p-md-5">
+        <form method="POST" action="{% url 'skin_quiz' %}" id="skinQuizForm">
+            {% csrf_token %}
+
+            <div class="quiz-step active" id="step1">
+                <h3 class="fw-bold mb-4 text-center">What is your primary skin goal?</h3>
+                <div class="row g-3">
+                    <div class="col-md-6 quiz-option">
+                        <input type="radio" name="concern" id="c1" value="acne" required>
+                        <label for="c1">
+                            <span class="emoji-icon">🦠</span>
+                            <div>
+                                <h6 class="fw-bold mb-0">Clear Breakouts</h6>
+                                <span class="small text-muted">Treat acne and prevent blemishes</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="col-md-6 quiz-option">
+                        <input type="radio" name="concern" id="c2" value="glow">
+                        <label for="c2">
+                            <span class="emoji-icon">✨</span>
+                            <div>
+                                <h6 class="fw-bold mb-0">Radiant Glow</h6>
+                                <span class="small text-muted">Fade dark spots and brighten</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="col-md-6 quiz-option">
+                        <input type="radio" name="concern" id="c3" value="hydration">
+                        <label for="c3">
+                            <span class="emoji-icon">💧</span>
+                            <div>
+                                <h6 class="fw-bold mb-0">Deep Hydration</h6>
+                                <span class="small text-muted">Fix dry, flaky, or tight skin</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="col-md-6 quiz-option">
+                        <input type="radio" name="concern" id="c4" value="aging">
+                        <label for="c4">
+                            <span class="emoji-icon">⏳</span>
+                            <div>
+                                <h6 class="fw-bold mb-0">Anti-Aging</h6>
+                                <span class="small text-muted">Smooth fine lines and firm skin</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quiz-step" id="step2">
+                <h3 class="fw-bold mb-4 text-center">It's 2 PM. How does your face feel?</h3>
+                <div class="row g-3">
+                    <div class="col-12 quiz-option">
+                        <input type="radio" name="midday_feel" id="feel1" value="shiny" required>
+                        <label for="feel1">
+                            <span class="emoji-icon">🍳</span>
+                            <h6 class="fw-bold mb-0">Shiny or greasy, especially on my forehead and nose.</h6>
+                        </label>
+                    </div>
+                    <div class="col-12 quiz-option">
+                        <input type="radio" name="midday_feel" id="feel2" value="tight">
+                        <label for="feel2">
+                            <span class="emoji-icon">🌵</span>
+                            <h6 class="fw-bold mb-0">Tight, dry, or a bit flaky.</h6>
+                        </label>
+                    </div>
+                    <div class="col-12 quiz-option">
+                        <input type="radio" name="midday_feel" id="feel3" value="normal">
+                        <label for="feel3">
+                            <span class="emoji-icon">😌</span>
+                            <h6 class="fw-bold mb-0">Normal, or just slightly oily in the T-zone.</h6>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quiz-step" id="step3">
+                <h3 class="fw-bold mb-4 text-center">Does your skin get red or irritated easily?</h3>
+                <div class="row g-3">
+                    <div class="col-md-6 quiz-option">
+                        <input type="radio" name="redness" id="red1" value="often" required>
+                        <label for="red1">
+                            <span class="emoji-icon">🍅</span>
+                            <h6 class="fw-bold mb-0">Yes, very often. Certain products sting.</h6>
+                        </label>
+                    </div>
+                    <div class="col-md-6 quiz-option">
+                        <input type="radio" name="redness" id="red2" value="rarely">
+                        <label for="red2">
+                            <span class="emoji-icon">🛡️</span>
+                            <h6 class="fw-bold mb-0">Rarely. My skin is pretty tough.</h6>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quiz-step" id="step4">
+                <h3 class="fw-bold mb-4 text-center">Do you have a favorite brand?</h3>
+                <p class="text-center text-muted mb-4">We'll prioritize this brand in your results if we find a good match.</p>
+                <select name="preferred_brand" class="form-select form-select-lg border-2 rounded-3 mb-3">
+                    <option value="Any">Surprise me! (Any Brand)</option>
+                    <option value="Minimalist">Minimalist</option>
+                    <option value="COSRX">COSRX</option>
+                    <option value="Cetaphil">Cetaphil</option>
+                    <option value="Plum">Plum</option>
+                    <option value="Dot & Key">Dot & Key</option>
+                    <option value="The Derma Co">The Derma Co</option>
+                </select>
+            </div>
+
+            <div class="quiz-step" id="step5">
+                <h3 class="fw-bold mb-4 text-center">What is your maximum budget?</h3>
+                <p class="text-center text-muted mb-4">For the *entire* routine combined.</p>
+                
+                <div class="d-flex align-items-center bg-light p-4 rounded-4 mb-4 border">
+                    <span class="fs-3 fw-bold text-muted me-2">₹</span>
+                    <input type="number" name="budget" class="form-control form-control-lg border-0 bg-transparent fw-bold fs-3" placeholder="2500" value="2500" required>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-5">
+                <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" id="prevBtn" style="display: none;">← Back</button>
+                <button type="button" class="btn btn-dark rounded-pill px-5 fw-bold ms-auto" id="nextBtn">Continue →</button>
+                <button type="submit" class="btn btn-success rounded-pill px-5 fw-bold ms-auto" id="submitBtn" style="display: none;">Build My Routine ✨</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+    // JavaScript to handle the interactive Step-by-Step UI
+    document.addEventListener("DOMContentLoaded", function() {
+        let currentStep = 1;
+        const totalSteps = 5;
+        
+        const nextBtn = document.getElementById("nextBtn");
+        const prevBtn = document.getElementById("prevBtn");
+        const submitBtn = document.getElementById("submitBtn");
+        const progressBar = document.getElementById("quizProgress");
+        const stepNumText = document.getElementById("currentStepNum");
+
+        function showStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.quiz-step').forEach(el => el.classList.remove('active'));
+            // Show current step
+            document.getElementById('step' + step).classList.add('active');
+            
+            // Update Progress Bar
+            progressBar.style.width = (step / totalSteps) * 100 + '%';
+            stepNumText.innerText = step;
+
+            // Handle Buttons
+            if (step === 1) {
+                prevBtn.style.display = 'none';
+            } else {
+                prevBtn.style.display = 'block';
+            }
+
+            if (step === totalSteps) {
+                nextBtn.style.display = 'none';
+                submitBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = 'block';
+                submitBtn.style.display = 'none';
+            }
+        }
+
+        nextBtn.addEventListener('click', () => {
+            // Basic validation to ensure they picked an option before proceeding
+            const currentInputs = document.getElementById('step' + currentStep).querySelectorAll('input[type="radio"]');
+            if (currentInputs.length > 0) {
+                let checked = false;
+                currentInputs.forEach(radio => { if(radio.checked) checked = true; });
+                if(!checked) {
+                    alert("Please select an option to continue!");
+                    return;
+                }
+            }
+
+            if (currentStep < totalSteps) {
+                currentStep++;
+                showStep(currentStep);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        });
+    });
+</script>
+{% endblock %}
