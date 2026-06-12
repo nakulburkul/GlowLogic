@@ -70,15 +70,9 @@
         
         <div class="col-lg-5">
             <div class="sticky-image-wrapper">
-                <div class="detail-img-card">
-                    {% if product.image %}
-                        <img src="{{ product.image.url }}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-                    {% elif product.image_filename %}
-                        <img src="{% static 'images/' %}{{ product.image_filename }}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-                    {% else %}
-                        <img src="{% static 'images/' %}{{ product.local_image_filename|default:'default.jpg' }}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-                    {% endif %}
-                </div>
+<div class="detail-img-card">
+    <img src="{% if product.image %}{{ product.image.url }}{% else %}https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide{% endif %}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+</div>
             </div>
         </div>
         
@@ -397,15 +391,9 @@
                     </div>
 
                    <a href="{% url 'product_detail' p.id %}" class="text-decoration-none">
-                        <div class="p-3 text-center border-bottom bg-white overflow-hidden">
-                            {% if p.image %}
-                                <img src="{{ p.image.url }}" class="img-fluid product-img-zoom" style="height: 200px; width: 100%; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-                            {% elif p.image_filename %}
-                                <img src="{% static 'images/' %}{{ p.image_filename }}" class="img-fluid product-img-zoom" style="height: 200px; width: 100%; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-                            {% else %}
-                                <img src="{% static 'images/' %}{{ p.local_image_filename|default:'default.jpg' }}" class="img-fluid product-img-zoom" style="height: 200px; width: 100%; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-                            {% endif %}
-                        </div>
+<div class="p-3 text-center border-bottom bg-white overflow-hidden">
+    <img src="{% if p.image %}{{ p.image.url }}{% else %}https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide{% endif %}" class="img-fluid product-img-zoom" style="height: 200px; width: 100%; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+</div>
                     </a>
                     
                     <div class="card-body d-flex flex-column p-3">

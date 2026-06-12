@@ -58,7 +58,7 @@ class Product(models.Model):
     
     available_sizes = models.CharField(max_length=200, blank=True, null=True)
     image_filename = models.CharField(max_length=255, null=True, blank=True)
-    image = models.ImageField(upload_to='product_images/', blank=True, null=True)
+    image = models.ImageField(upload_to='', null=True, blank=True)
     normalized_name = models.CharField(max_length=500, blank=True, null=True)
     core_name = models.CharField(max_length=500, blank=True, null=True)
     size_variant = models.CharField(max_length=50, blank=True, null=True)
@@ -248,8 +248,9 @@ class Product(models.Model):
                     history.save()
             except Exception:
                 pass # Failsafe so the admin never crashes
-        
     
+   
+  
     
     
 

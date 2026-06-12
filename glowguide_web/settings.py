@@ -28,7 +28,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
-DEBUG = os.environ.get('DEBUG') == 'True'
+# Change this line in settings.py:
+DEBUG = True
 
 ALLOWED_HOSTS = ['*'] # We will lock this down later once we get your Render URL
 
@@ -58,7 +59,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # 🚀 Added WhiteNoise for production static files
+    #'whitenoise.middleware.WhiteNoiseMiddleware',  # 🚀 Added WhiteNoise for production static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -93,10 +94,10 @@ WSGI_APPLICATION = 'glowguide_web.wsgi.application'
 # 🚀 Automatically uses Render's PostgreSQL when online.
 # Falls back to your local skincare_catalog.db when testing on your laptop.
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///' + str(BASE_DIR / 'skincare_catalog.db'),
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'skincare_catalog.db',
+    }
 }
 
 
@@ -160,3 +161,8 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
 DEFAULT_FROM_EMAIL = 'GlowGuide <nakulburkul@gmail.com>'
+
+
+# settings.py
+MEDIA_URL = '/product_images/'
+MEDIA_ROOT = BASE_DIR / 'product_images'
