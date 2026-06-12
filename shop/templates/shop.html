@@ -131,7 +131,7 @@
         <div class="col">
             <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden product-card transition-hover">
                <a href="{% url 'product_detail' p.id %}" class="text-decoration-none">
-                    <div class="p-2 text-center position-relative border-bottom bg-white overflow-hidden">
+<div class="p-2 text-center position-relative border-bottom bg-white overflow-hidden">
     {% if p.image %}
         <img src="{{ p.image.url }}" class="img-fluid product-img-zoom" style="height: 250px; width: 100%; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
     {% elif p.image_filename %}
