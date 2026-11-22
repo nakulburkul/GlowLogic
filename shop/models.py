@@ -76,6 +76,7 @@ class Product(models.Model):
     show_flipkart = models.BooleanField(default=True, help_text="Uncheck to completely hide Flipkart for this product.")
     show_myntra = models.BooleanField(default=True, help_text="Uncheck to completely hide Myntra for this product.")
     is_active = models.BooleanField(default=True, help_text="Uncheck this to temporarily hide the product without losing its data or images.")
+    image_url = models.URLField(max_length=1000, null=True, blank=True)
     
     
     @property
@@ -391,3 +392,51 @@ class OutboundClick(models.Model):
     def __str__(self):
         username = self.user.username if self.user else "Anonymous"
         return f"{username} clicked {self.product_name} at {self.clicked_at}"
+    
+
+# --- 📸 SKIN PROGRESS TIMELINE ---
+class SkinDiaryEntry(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='diary_entries')
+    image = models.ImageField(upload_to='skin_diary/')
+    date_taken = models.DateField(auto_now_add=True)
+    notes = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-date_taken']
+
+    def __str__(self):
+        return f"{self.user.username}'s skin on {self.date_taken}"
+
+# --- 🔔 PRICE DROP NOTIFICATIONS ---
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=100)
+    message = models.TextField()
+    link = models.CharField(max_length=255, blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+# --- 👤 USER PROFILE EXTENSION ---
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True) # 🚀 NEW FIELD
+    
+    # 1. Skin Identity
+    skin_type = models.CharField(max_length=50, blank=True, null=True)
+    primary_concern = models.CharField(max_length=50, blank=True, null=True)
+    budget = models.CharField(max_length=50, blank=True, null=True)
+    
+    # 2. Sensitivities
+    no_go_ingredients = models.TextField(blank=True, null=True, help_text="Comma-separated list")
+    
+    # 3. Notification Settings
+    notify_reminders = models.BooleanField(default=True)
+    notify_price_drops = models.BooleanField(default=True)
+    notify_newsletter = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile"

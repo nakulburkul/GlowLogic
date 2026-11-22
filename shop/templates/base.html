@@ -6,133 +6,181 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>{% block title %}GlowLogic | Smarter Skincare{% endblock %}</title>
     
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-    body { font-family: 'Inter', sans-serif; background-color: #fcfcfc; }
-    h1, h2, h3, h4, h5, .nav-brand-glow { font-family: 'Playfair Display', serif !important; }
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    h1, h2, h3, h4, h5 { font-family: 'Playfair Display', serif !important; }
     
-    .glow-navbar { background-color: #ffffff; box-shadow: 0 2px 15px rgba(0,0,0,0.04); padding: 12px 0; }
-    
-    /* 🚀 Restored the clean, text-based branding */
-    .nav-brand-glow { font-size: 1.5rem; font-weight: 800; color: #2ecc71 !important; letter-spacing: 0.5px; }
-
-    /* Nav Links */
-    .nav-item-custom { margin: 0 4px; }
-    .nav-link-custom {
-        color: #4a5568 !important; font-weight: 600; font-size: 0.95rem;
-        padding: 8px 16px !important; border-radius: 8px; transition: all 0.2s ease-in-out;
+    /* 🚀 PREMIUM GLASSMORPHISM NAVBAR */
+    .glow-navbar { 
+        background-color: rgba(255, 255, 255, 0.85) !important; 
+        backdrop-filter: blur(16px); 
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 4px 30px rgba(0,0,0,0.02); 
+        padding: 12px 0; 
+        transition: all 0.3s ease;
     }
-    .nav-link-custom:hover { color: #2ecc71 !important; background-color: #f0fdf4; }
-    .nav-link-danger { color: #e53e3e !important; }
+    
+    /* Sleek Solid Brand Logo */
+    .nav-brand-glow { 
+        font-family: 'Playfair Display', serif !important;
+        font-size: 1.6rem; 
+        font-weight: 800; 
+        color: #2ecc71 !important; /* The beautiful GlowLogic Green */
+        letter-spacing: -0.5px; 
+    }
+    .nav-brand-star {
+        color: #fbbf24 !important; /* Premium Golden Yellow */
+        font-size: 1.4rem;
+        transform: translateY(-2px);
+    }
+
+
+    /* Soft Pill Navigation Links */
+    .nav-item-custom { margin: 0 2px; }
+    .nav-link-custom {
+        color: #475569 !important; font-weight: 600; font-size: 0.95rem;
+        padding: 8px 18px !important; border-radius: 50px; transition: all 0.2s ease;
+    }
+    .nav-link-custom:hover { 
+        color: #10b981 !important; 
+        background-color: #f0fdf4; 
+        transform: translateY(-1px);
+    }
+    .nav-link-danger { color: #ef4444 !important; }
+    .nav-link-danger:hover { color: #dc2626 !important; background-color: #fef2f2; }
+
+    /* Clean Search Bar */
+    .nav-search-bar {
+        background-color: #f1f5f9;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    .nav-search-bar:focus-within {
+        background-color: white;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+    }
 
     /* MOBILE BOTTOM NAV */
     .mobile-bottom-nav {
         display: none; position: fixed; bottom: 0; width: 100%; background: white;
-        border-top: 1px solid #eee; padding: 10px 0; z-index: 1050; box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+        border-top: 1px solid #e2e8f0; padding: 10px 0; z-index: 1050; box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
     }
     .mobile-nav-link { 
-        color: #64748b; text-decoration: none; font-size: 0.7rem; font-weight: 500;
+        color: #64748b; text-decoration: none; font-size: 0.7rem; font-weight: 600;
         display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; 
         transition: color 0.2s ease;
     }
     .mobile-nav-link i { font-size: 1.25rem; margin-bottom: 4px; }
-    .mobile-nav-link:hover, .mobile-nav-link:active { color: #2ecc71; }
+    .mobile-nav-link:hover, .mobile-nav-link:active { color: #10b981; }
 
-    @media (max-width: 991px) {
-        .mobile-bottom-nav { display: flex; }
-    }
+    @media (max-width: 991px) { .mobile-bottom-nav { display: flex; } }
 
     /* FLOATING AI BUTTON */
     .floating-chat-btn {
-        position: fixed;
-        bottom: 40px;
-        right: 30px;
-        background: #1a202c;
-        color: white;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-        z-index: 1000;
-        transition: 0.3s;
-        text-decoration: none;
+        position: fixed; bottom: 40px; right: 30px; background: #0f172a; color: white;
+        width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 24px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); z-index: 1000; transition: 0.3s; text-decoration: none;
     }
     .floating-chat-btn:hover {
-        background: #2ecc71;
-        color: white;
-        transform: translateY(-5px) scale(1.05);
-        box-shadow: 0 15px 25px rgba(46, 204, 113, 0.3);
+        background: #10b981; color: white; transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 15px 25px rgba(16, 185, 129, 0.3);
     }
-    @media (max-width: 991px) {
-        .floating-chat-btn { bottom: 90px; right: 20px; } 
+    @media (max-width: 991px) { .floating-chat-btn { bottom: 90px; right: 20px; } }
+
+    /* 🔍 Optimized Sleek Search Bar */
+    .ecommerce-search-bar {
+        display: flex;
+        align-items: center;
+        background-color: #f8fafc;
+        border-radius: 50px; /* Pill shape looks more professional */
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+        padding: 2px 10px;
+    }
+    .ecommerce-search-bar:focus-within {
+        background-color: #ffffff;
+        border-color: #10b981;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    }
+    .ecommerce-search-input {
+        flex-grow: 1;
+        border: none;
+        background: transparent;
+        padding: 8px 10px;
+        font-size: 0.85rem; /* Slightly smaller for cleaner look */
+        color: #1e293b;
+        outline: none;
+    }
+    .ecommerce-search-input::placeholder {
+        color: #94a3b8;
     }
     </style>
+
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg glow-navbar sticky-top">
-    <div class="container">
-        <a class="navbar-brand nav-brand-glow d-flex align-items-center gap-2" href="{% url 'home' %}">✨ GlowLogic</a>
+<nav class="navbar navbar-expand-xl glow-navbar sticky-top">
+    <div class="container-fluid px-4 px-lg-5">
+        
+        <div class="d-flex align-items-center" style="flex: 1; min-width: 180px;">
+            <a class="navbar-brand nav-brand-glow d-flex align-items-center gap-1 m-0" href="{% url 'home' %}">
+                <span class="nav-brand-star">✨</span> GlowLogic
+            </a>
+        </div>
         
         <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
             <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarContent">
-            <ul class="navbar-nav mx-auto mb-3 mb-lg-0 align-items-start align-items-lg-center mt-3 mt-lg-0">
-                <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'home' %}">Home</a></li>
-                <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'shop' %}">Shop Catalog</a></li>
-                <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'guide' %}">📖 Skin Guide</a></li>
-                
-                <li class="nav-item nav-item-custom w-100 w-lg-auto">
-                    <a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'ai_skin_scanner' %}">
-                        <i class="fas fa-barcode text-primary"></i> Scan Ingredients
-                    </a>
-                </li>
-
-                <li class="nav-item nav-item-custom w-100 w-lg-auto">
-                    <a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'ai_assistant_page' %}">
-                        <i class="fas fa-robot text-success"></i> Ask AI
-                    </a>
-                </li>
-
+            <ul class="navbar-nav mx-auto mb-3 mb-xl-0 d-flex justify-content-center align-items-center">
+                <li class="nav-item nav-item-custom"><a class="nav-link nav-link-custom text-nowrap" href="{% url 'home' %}">Home</a></li>
+                <li class="nav-item nav-item-custom"><a class="nav-link nav-link-custom text-nowrap" href="{% url 'shop' %}">Shop Catalog</a></li>
+                <li class="nav-item nav-item-custom"><a class="nav-link nav-link-custom text-nowrap" href="{% url 'guide' %}"><i class="fas fa-book-open text-primary opacity-75 me-1"></i> Skin Guide</a></li>
+                <li class="nav-item nav-item-custom"><a class="nav-link nav-link-custom text-nowrap" href="{% url 'ai_skin_scanner' %}"><i class="fas fa-barcode text-primary opacity-75 me-1"></i> Scan Ingredients</a></li>
+                <li class="nav-item nav-item-custom"><a class="nav-link nav-link-custom text-nowrap" href="{% url 'ai_assistant_page' %}"><i class="fas fa-robot text-success opacity-75 me-1"></i> Ask AI</a></li>
                 {% if user.is_authenticated %}
-                    <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom px-2 text-nowrap" href="{% url 'profile' %}">👤 My Profile</a></li>
-                    <li class="nav-item nav-item-custom w-100 w-lg-auto"><a class="nav-link nav-link-custom nav-link-danger px-2 text-nowrap" href="{% url 'wishlist' %}">❤️ My Wishlist</a></li>
+                    <li class="nav-item nav-item-custom"><a class="nav-link nav-link-custom text-nowrap" href="{% url 'profile' %}"><i class="fas fa-user-circle text-secondary opacity-75 me-1"></i> My Profile</a></li>
+                    <li class="nav-item nav-item-custom"><a class="nav-link nav-link-custom nav-link-danger text-nowrap" href="{% url 'wishlist' %}"><i class="fas fa-heart opacity-75 me-1"></i> My Wishlist</a></li>
                 {% endif %}
             </ul>
 
-            <div class="d-flex align-items-stretch align-items-lg-center gap-3 flex-column flex-lg-row pb-3 pb-lg-0">
-                <form method="GET" action="{% url 'shop' %}" class="d-flex position-relative w-100" style="min-width: 200px; max-width: 280px; flex-grow: 1;">
-                    <input type="text" id="liveSearchInput" name="q" class="form-control rounded-pill bg-light border-0 ps-3 pe-5 w-100" placeholder="Search products..." style="font-size: 0.9rem;" autocomplete="off">
-                    <button type="submit" class="btn position-absolute end-0 top-50 translate-middle-y border-0 text-muted shadow-none" style="background: transparent; z-index: 10;">🔍</button>
-                    <div id="searchSuggestions" class="dropdown-menu shadow-lg w-100 border-0 rounded-4 mt-2 position-absolute" style="display: none; top: 100%; z-index: 1050; max-height: 350px; overflow-y: auto;"></div>
+            <div class="d-flex align-items-center justify-content-xl-end gap-3 flex-column flex-xl-row pb-3 pb-xl-0" style="flex: 1; min-width: 350px;">
+                
+                <form method="GET" action="{% url 'shop' %}" class="position-relative mb-2 mb-lg-0" style="min-width: 200px; max-width: 400px; flex-grow: 1;">
+                    <div class="d-flex align-items-center bg-light border rounded-3 overflow-hidden transition-hover" style="border-color: #e2e8f0;">
+                        <button type="submit" class="border-0 bg-transparent ps-3 pe-2 text-muted" style="outline: none; cursor: pointer;">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <input type="text" id="liveSearchInput" name="q" class="form-control border-0 bg-transparent shadow-none" placeholder="Search products..." autocomplete="off" style="font-size: 0.95rem; padding: 10px 10px 10px 0;">
+                    </div>
+                    <div id="searchSuggestions" class="dropdown-menu shadow-lg w-100 border-0 rounded-3 mt-2 position-absolute p-2" style="display: none; top: 100%; z-index: 1050; max-height: 350px; overflow-y: auto;"></div>
                 </form>
 
-                <div class="d-flex align-items-center justify-content-center">
+                <div class="d-flex align-items-center gap-2">
                     {% if user.is_authenticated %}
-                        <a href="{% url 'logout' %}" class="nav-link nav-link-custom nav-link-danger px-2 text-nowrap">Logout</a>
+                        <a href="{% url 'logout' %}" class="btn text-danger fw-bold px-2 text-nowrap transition-hover" style="font-size: 0.9rem;">Sign Out</a>
                     {% else %}
-                        <a href="{% url 'login' %}" class="nav-link nav-link-custom px-2 text-nowrap">Login</a>
+                        <a href="{% url 'login' %}" class="btn text-dark fw-bold px-2 text-nowrap transition-hover" style="font-size: 0.9rem;">Login</a>
                     {% endif %}
-                </div>
 
-                <div class="d-flex align-items-center justify-content-center justify-content-lg-end gap-2 mt-2 mt-lg-0">
                     {% if request.session.saved_routine %}
-                        <a href="{% url 'my_routine' %}" class="btn btn-outline-success rounded-pill fw-bold px-3 py-2 shadow-sm text-nowrap" style="font-size: 0.9rem;">My Routine</a>
+                        <a href="{% url 'my_routine' %}" class="btn rounded-pill fw-bold px-3 py-1 shadow-sm text-nowrap transition-hover bg-white" style="border: 2px solid #2ecc71; color: #2ecc71; font-size: 0.9rem;">My Routine</a>
                     {% endif %}
 
-                    <a href="{% url 'skin_quiz' %}" class="btn rounded-pill text-white fw-bold px-3 py-2 shadow-sm text-nowrap" style="background-color: #2ecc71; font-size: 0.9rem;">
-                        Quiz
+                    <a href="{% url 'skin_quiz' %}" class="btn rounded-pill text-white fw-bold px-3 py-1 shadow-sm text-nowrap transition-hover" style="background-color: #2ecc71; border: 2px solid #2ecc71; font-size: 0.9rem;">
+                        Skin Quiz
                     </a>
                 </div>
+                
             </div>
         </div>
     </div>
@@ -140,9 +188,13 @@
 
 {% block content %}{% endblock %}
 
-<footer style="background-color: #f8f9fa; border-top: 1px solid #e7eaf3; padding: 2.5rem 0; margin-top: 4rem; text-align: center; padding-bottom: 90px;">
+<footer style="background-color: #ffffff; border-top: 1px solid #f1f5f9; padding: 3rem 0; margin-top: 4rem; text-align: center; padding-bottom: 90px;">
     <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-        <p style="color: #6c757d; font-size: 0.95rem; margin: 0; font-family: system-ui, -apple-system, sans-serif;">
+        <h4 class="fw-bold mb-3 d-flex align-items-center justify-content-center gap-2" style="font-family: 'Playfair Display', serif; color: #0f172a;">
+            <img src="{% static 'images/favicon.png' %}" alt="GlowLogic Logo" style="height: 28px; width: 28px; object-fit: contain;">
+            GlowLogic
+        </h4>
+        <p style="color: #64748b; font-size: 0.95rem; margin: 0;">
             &copy; 2026 GlowLogic. All rights reserved. <br>
             <span style="font-size: 0.85rem; opacity: 0.8;">Powered by intelligent skincare algorithms.</span>
         </p>
@@ -239,10 +291,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (data.length > 0) {
                             data.forEach(item => {
                                 suggestionsBox.innerHTML += `
-                                    <a href="/product/${item.id}/" class="dropdown-item py-2 px-3 border-bottom d-flex justify-content-between align-items-center transition-hover">
-                                        <span class="small fw-bold text-wrap" style="max-width: 70%;">${item.name}</span>
-                                        <span class="badge bg-success-subtle text-success">₹${item.price || 'Check'}</span>
-                                    </a>`;
+    <a href="/product/${item.id}/" class="dropdown-item py-2 px-3 border-bottom d-flex align-items-center justify-content-between transition-hover" style="gap: 12px;">
+        <div class="d-flex align-items-center" style="max-width: 80%; min-width: 0;">
+            <span class="text-muted me-2" style="font-size: 0.85rem;"><i class="fas fa-search opacity-50"></i></span>
+            <span class="small fw-medium text-dark text-truncate" style="display: inline-block; width: 100%;" title="${item.name}">
+                ${item.name}
+            </span>
+        </div>
+        <span class="fw-bold text-success flex-shrink-0" style="font-size: 0.85rem;">
+            ₹${item.price || 'Check'}
+        </span>
+    </a>`;
                             });
                             suggestionsBox.style.display = 'block';
                         } else {

@@ -119,8 +119,22 @@
 
         <div class="text-center mb-4 d-print-none">
             <h2 class="fw-bold" style="font-family: 'Playfair Display', serif;">Your GlowGuide Routine</h2>
-            <p class="text-muted fs-5 mb-1">Curated perfectly for <strong>{{ skin_type }}</strong> skin.</p>
+            <p class="text-muted fs-5 mb-3">Curated perfectly for <strong>{{ skin_type }}</strong> skin.</p>
+            <button id="share-ig-btn" onclick="generateInstagramStory()" class="btn btn-dark rounded-pill fw-bold shadow-sm px-4 py-2 transition-hover mb-2">
+                <i class="fab fa-instagram me-2"></i> Share to Instagram
+            </button>
         </div>
+
+        {% if routine_warnings %}
+        <div class="alert alert-danger border-0 rounded-4 shadow-sm p-4 mb-4 mx-auto" style="max-width: 800px; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+            <h5 class="fw-bold text-danger mb-3"><i class="fas fa-exclamation-triangle me-2"></i> Formulator Alert</h5>
+            <ul class="mb-0 text-dark" style="line-height: 1.6;">
+                {% for warning in routine_warnings %}
+                    <li>{{ warning|safe }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
 
         <div class="budget-card text-center shadow-sm">
             <h6 class="text-success fw-bold text-uppercase mb-2">✓ Budget Goal Met</h6>
@@ -138,7 +152,7 @@
         </div>
     </div>
 
-    <div class="row g-4 g-md-5">
+    <div class="row g-4 g-md-5" id="routineCanvas">
         
         <div class="col-lg-6">
             <div class="routine-header am-header">🌞 Morning Routine (AM)</div>
@@ -173,7 +187,7 @@
                             <a href="{% url 'toggle_wishlist' product.id %}" class="wishlist-btn-routine text-decoration-none d-print-none">
                                 <i class="{% if product.id in saved_product_ids %}fas fa-heart text-danger{% else %}far fa-heart text-muted{% endif %} fs-5"></i>
                             </a>
-                            <div id="price-am-{{ product.id }}" class="fw-bold text-success text-end" style="font-size: 1.05rem;">₹{{ product.lowest_price|default:product.price }}</div>
+                            <div id="price-am-{{ product.id }}" class="fw-bold text-success text-end routine-price" data-product-id="{{ product.id }}" data-price="{{ product.lowest_price|default:product.price }}" style="font-size: 1.05rem;">₹{{ product.lowest_price|default:product.price }}</div>
                         </div>
                     </div>
 
@@ -251,7 +265,7 @@
                             <a href="{% url 'toggle_wishlist' product.id %}" class="wishlist-btn-routine text-decoration-none d-print-none">
                                 <i class="{% if product.id in saved_product_ids %}fas fa-heart text-danger{% else %}far fa-heart text-muted{% endif %} fs-5"></i>
                             </a>
-                            <div id="price-pm-{{ product.id }}" class="fw-bold text-success text-end" style="font-size: 1.05rem;">₹{{ product.lowest_price|default:product.price }}</div>
+                            <div id="price-pm-{{ product.id }}" class="fw-bold text-success text-end routine-price" data-product-id="{{ product.id }}" data-price="{{ product.lowest_price|default:product.price }}" style="font-size: 1.05rem;">₹{{ product.lowest_price|default:product.price }}</div>
                         </div>
                     </div>
 
@@ -392,18 +406,194 @@
     </div>
 
     <div class="text-center mt-5 mb-5 d-print-none">
-        <button onclick="window.print()" class="btn btn-outline-success border-2 btn-lg px-4 rounded-pill transition-hover shadow-sm fw-bold me-md-2 mb-3 mb-md-0">
-            <i class="fas fa-file-pdf me-2"></i> Download as PDF
+        <button id="download-pdf-btn" onclick="downloadRoutinePDF()" class="btn btn-outline-success border-2 btn-lg px-4 rounded-pill transition-hover shadow-sm fw-bold me-md-2 mb-3 mb-md-0">
+            <i class="fas fa-file-pdf me-2"></i> Download PDF Regimen
         </button>
         <a href="{% url 'shop' %}" class="btn btn-dark btn-lg px-5 rounded-pill transition-hover shadow-sm fw-bold mb-3 mb-md-0">Explore Full Shop</a>
     </div>
+
+    <div style="position: absolute; left: -9999px; top: 0; pointer-events: none; opacity: 0; overflow: hidden;">
+        <div id="ig-story-template" style="width: 1080px; height: 1920px; background: linear-gradient(145deg, #fdfbfb 0%, #ebedee 100%); padding: 80px; box-sizing: border-box; display: flex; flex-direction: column; font-family: 'Helvetica Neue', Arial, sans-serif; position: relative;">
+            
+            <div style="position: absolute; top: -100px; left: -100px; width: 600px; height: 600px; background: rgba(46, 204, 113, 0.2); border-radius: 50%; filter: blur(100px);"></div>
+            <div style="position: absolute; bottom: -100px; right: -100px; width: 600px; height: 600px; background: rgba(59, 130, 246, 0.2); border-radius: 50%; filter: blur(100px);"></div>
+
+            <div style="text-align: center; margin-bottom: 60px; z-index: 2;">
+                <h1 style="font-size: 65px; font-weight: 800; color: #1a202c; margin: 0; font-family: 'Playfair Display', serif;">✨ GlowLogic</h1>
+                <h2 style="font-size: 40px; font-weight: 500; color: #4a5568; margin: 15px 0 30px;">My Custom Regimen</h2>
+                <span style="background: #2ecc71; color: white; padding: 15px 40px; border-radius: 50px; font-size: 28px; font-weight: bold; box-shadow: 0 10px 20px rgba(46,204,113,0.3);">
+                    {{ skin_type }} Skin
+                </span>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); border-radius: 40px; padding: 50px; margin-bottom: 40px; flex: 1; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 20px 50px rgba(0,0,0,0.05); z-index: 2;">
+                <h3 style="font-size: 42px; color: #d97706; margin: 0 0 40px 0; border-bottom: 2px solid #fde68a; padding-bottom: 20px;">☀️ Morning Routine</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px;">
+                    {% for p in am_routine|slice:":4" %}
+                    <div style="background: white; border-radius: 25px; padding: 25px; display: flex; align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.03);">
+                        <img src="{% if p.image %}{{ p.image.url }}{% endif %}" style="width: 120px; height: 120px; object-fit: contain; border-radius: 15px; background: #f8fafc; margin-right: 25px;" crossorigin="anonymous">
+                        <div>
+                            <p style="font-size: 18px; color: #64748b; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">{{ p.category }}</p>
+                            <p style="font-size: 26px; color: #1e293b; margin: 0; font-weight: 600; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ p.name }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); border-radius: 40px; padding: 50px; flex: 1; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 20px 50px rgba(0,0,0,0.05); z-index: 2;">
+                <h3 style="font-size: 42px; color: #4f46e5; margin: 0 0 40px 0; border-bottom: 2px solid #c7d2fe; padding-bottom: 20px;">🌙 Night Routine</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px;">
+                    {% for p in pm_routine|slice:":4" %}
+                    <div style="background: white; border-radius: 25px; padding: 25px; display: flex; align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.03);">
+                        <img src="{% if p.image %}{{ p.image.url }}{% endif %}" style="width: 120px; height: 120px; object-fit: contain; border-radius: 15px; background: #f8fafc; margin-right: 25px;" crossorigin="anonymous">
+                        <div>
+                            <p style="font-size: 18px; color: #64748b; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">{{ p.category }}</p>
+                            <p style="font-size: 26px; color: #1e293b; margin: 0; font-weight: 600; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ p.name }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: auto; padding-top: 40px; z-index: 2;">
+                <p style="font-size: 24px; color: #64748b; font-weight: 500;">Take the free AI skin quiz at <b>glowlogic.com</b></p>
+            </div>
+        </div>
+    </div>
+
+    <div style="position: absolute; left: -9999px; top: 0; pointer-events: none; opacity: 0; overflow: hidden;">
+        <div id="rx-prescription-template" style="width: 1080px; background: #ffffff; padding: 80px; box-sizing: border-box; font-family: 'Georgia', serif; border: 20px solid #f8fafc; position: relative;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 4px solid #1a202c; padding-bottom: 30px; margin-bottom: 50px;">
+                <div>
+                    <h1 style="font-size: 80px; font-weight: 900; color: #1a202c; margin: 0;">Rx</h1>
+                    <p style="font-family: 'Helvetica Neue', sans-serif; font-size: 24px; color: #64748b; margin: 5px 0 0; text-transform: uppercase; letter-spacing: 3px;">Clinical Skin Regimen</p>
+                </div>
+                <div style="text-align: right; font-family: 'Helvetica Neue', sans-serif;">
+                    <h2 style="font-size: 35px; color: #1a202c; margin: 0; font-weight: bold;">GlowLogic</h2>
+                    <p style="font-size: 20px; color: #64748b; margin: 5px 0 0;">glowlogic.com</p>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; padding: 30px; border-radius: 15px; margin-bottom: 50px; font-family: 'Helvetica Neue', sans-serif; display: flex; justify-content: space-between;">
+                <div>
+                    <p style="font-size: 18px; color: #64748b; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold;">Patient Profile</p>
+                    <h3 style="font-size: 30px; color: #1a202c; margin: 0;">{{ skin_type }} Skin</h3>
+                </div>
+                <div style="text-align: right;">
+                    <p style="font-size: 18px; color: #64748b; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold;">Date Prescribed</p>
+                    <h3 style="font-size: 30px; color: #1a202c; margin: 0;">{% now "F j, Y" %}</h3>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 50px;">
+                <h2 style="font-size: 40px; color: #d97706; border-bottom: 2px solid #fde68a; padding-bottom: 15px; margin-bottom: 30px;">☀️ Morning Protocol</h2>
+                {% for p in am_routine %}
+                <div style="display: flex; margin-bottom: 25px; align-items: center;">
+                    <div style="width: 50px; height: 50px; background: #fef3c7; color: #d97706; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; font-family: 'Helvetica Neue', sans-serif; margin-right: 25px;">{{ forloop.counter }}</div>
+                    <div style="flex: 1;">
+                        <p style="font-family: 'Helvetica Neue', sans-serif; font-size: 18px; color: #64748b; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">{{ p.category }}</p>
+                        <h4 style="font-size: 28px; color: #1a202c; margin: 0; font-family: 'Helvetica Neue', sans-serif;">{{ p.name }}</h4>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-bottom: 50px;">
+                <h2 style="font-size: 40px; color: #4f46e5; border-bottom: 2px solid #c7d2fe; padding-bottom: 15px; margin-bottom: 30px;">🌙 Evening Protocol</h2>
+                {% for p in pm_routine %}
+                <div style="display: flex; margin-bottom: 25px; align-items: center;">
+                    <div style="width: 50px; height: 50px; background: #e0e7ff; color: #4f46e5; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; font-family: 'Helvetica Neue', sans-serif; margin-right: 25px;">{{ forloop.counter }}</div>
+                    <div style="flex: 1;">
+                        <p style="font-family: 'Helvetica Neue', sans-serif; font-size: 18px; color: #64748b; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">{{ p.category }}</p>
+                        <h4 style="font-size: 28px; color: #1a202c; margin: 0; font-family: 'Helvetica Neue', sans-serif;">{{ p.name }}</h4>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 80px; display: flex; justify-content: flex-end;">
+                <div style="text-align: center;">
+                    <div style="font-family: 'Brush Script MT', cursive; font-size: 50px; color: #1a202c; border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; width: 300px; line-height: 0.8;">GlowLogic AI</div>
+                    <p style="font-family: 'Helvetica Neue', sans-serif; font-size: 18px; color: #64748b; margin: 10px 0 0; text-transform: uppercase;">Lead Formulator</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="pdf-export-container" style="display: none; background: white; padding: 50px; color: #000; font-family: Arial, sans-serif; width: 800px; margin: 0 auto;">
+    
+    <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px;">
+        <h1 style="font-size: 32px; font-weight: bold; margin: 0;">GlowLogic</h1>
+        <h3 style="font-size: 18px; color: #555; margin: 5px 0;">Custom Skincare Regimen</h3>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
+        <div><strong>Profile:</strong> {{ skin_type }}</div>
+        <div><strong>Date:</strong> {% now "F j, Y" %}</div>
+        <div><strong>Total:</strong> ₹{{ total_spent }}</div>
+    </div>
+    
+    <h4 style="border-bottom: 1px solid #000; padding-bottom: 5px;">Morning Protocol</h4>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        {% for p in am_routine %}
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px 0;">{{ p.category }}</td>
+            <td style="padding: 10px 10px; font-weight: bold;">{{ p.name }}</td>
+            <td style="padding: 10px 0; text-align: right;">₹{{ p.lowest_price|default:"0" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    
+    <h4 style="border-bottom: 1px solid #000; padding-bottom: 5px;">Evening Protocol</h4>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        {% for p in pm_routine %}
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px 0;">{{ p.category }}</td>
+            <td style="padding: 10px 10px; font-weight: bold;">{{ p.name }}</td>
+            <td style="padding: 10px 0; text-align: right;">₹{{ p.lowest_price|default:"0" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div style="text-align: center; margin-top: 50px; font-size: 12px; color: #888;">
+        Generated by GlowLogic AI
+    </div>
 </div>
 
+
 <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        calculateTrueBudget();
+    });
+
+    function calculateTrueBudget() {
+        let allPriceEls = document.querySelectorAll('.routine-price');
+        let uniqueProducts = new Map();
+
+        allPriceEls.forEach(el => {
+            let pid = el.getAttribute('data-product-id');
+            let rawPrice = el.getAttribute('data-price') || el.innerText;
+            let cleanPrice = rawPrice ? parseFloat(rawPrice.replace(/[^0-9.]/g, '')) : 0;
+
+            if(pid && !uniqueProducts.has(pid)) {
+                uniqueProducts.set(pid, cleanPrice);
+            }
+        });
+
+        let updatedTotal = 0;
+        uniqueProducts.forEach(price => updatedTotal += price);
+
+        let totalEl = document.getElementById('total-cost-display');
+        if (totalEl) {
+            totalEl.innerText = '₹' + updatedTotal.toFixed(1);
+        }
+    }
+
     function swapProduct(mainId, altUniqueId, newName, newPrice, newHowTo, newActives, newProductId) {
         let newImgSrc = document.getElementById('alt-img-' + altUniqueId).src;
         document.getElementById('img-' + mainId).src = newImgSrc;
-
         document.getElementById('name-' + mainId).innerText = newName;
 
         let newUrl = '/product/' + newProductId + '/';
@@ -413,37 +603,91 @@
         if(linkName) linkName.href = newUrl;
 
         let timelineNameEl = document.getElementById('timeline-name-' + mainId);
-        if (timelineNameEl) {
-            timelineNameEl.innerText = newName;
-        }
+        if (timelineNameEl) timelineNameEl.innerText = newName;
 
         let timelineHowToEl = document.getElementById('timeline-howto-' + mainId);
-        if (timelineHowToEl) {
-            timelineHowToEl.innerText = newHowTo;
-        }
+        if (timelineHowToEl) timelineHowToEl.innerText = newHowTo;
 
         let timelineActivesEl = document.getElementById('timeline-actives-' + mainId);
-        if (timelineActivesEl) {
-            timelineActivesEl.innerText = newActives;
-        }
+        if (timelineActivesEl) timelineActivesEl.innerText = newActives;
 
         let priceEl = document.getElementById('price-' + mainId);
-        let oldPrice = parseFloat(priceEl.innerText.replace(/[^0-9.]/g, '')) || 0;
-        let totalEl = document.getElementById('total-cost-display');
-        let currentTotal = parseFloat(totalEl.innerText.replace(/[^0-9.]/g, '')) || 0;
-
-        let updatedTotal = currentTotal - oldPrice + parseFloat(newPrice);
-        totalEl.innerText = '₹' + updatedTotal.toFixed(1);
-
         priceEl.innerText = '₹' + parseFloat(newPrice);
+        priceEl.setAttribute('data-product-id', newProductId);
+        priceEl.setAttribute('data-price', newPrice);
+
+        calculateTrueBudget();
 
         let collapseEl = document.getElementById('alt-' + mainId);
         if (collapseEl) {
             let bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
-            if (bsCollapse) {
-                bsCollapse.hide();
-            }
+            if (bsCollapse) bsCollapse.hide();
         }
+    }
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+    function generateInstagramStory() {
+        const targetCard = document.getElementById('ig-story-template');
+        const shareBtn = document.getElementById('share-ig-btn');
+        const originalText = shareBtn.innerHTML;
+        
+        shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating Story...';
+        shareBtn.disabled = true;
+
+        html2canvas(targetCard, { scale: 1, useCORS: true, backgroundColor: null }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'GlowLogic_Story.png';
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+
+            shareBtn.innerHTML = originalText;
+            shareBtn.disabled = false;
+        }).catch(err => {
+            console.error("Canvas Error: ", err);
+            shareBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Error';
+            setTimeout(() => { shareBtn.innerHTML = originalText; shareBtn.disabled = false; }, 3000);
+        });
+    }
+
+    function downloadRoutinePDF() {
+        const btn = document.getElementById('download-pdf-btn');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = 'Generating...';
+        btn.disabled = true;
+
+        const element = document.getElementById('pdf-export-container');
+        element.style.display = 'block'; 
+
+        const opt = {
+            margin:       0.5,
+            filename:     'GlowLogic_Regimen.pdf',
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true, 
+                logging: false,
+                windowWidth: 800,
+                // 🚀 FIX: Force background color to white explicitly
+                backgroundColor: '#ffffff' 
+            },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.display = 'none'; 
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }).catch(err => {
+            console.error("PDF Error: ", err);
+            element.style.display = 'none';
+            btn.innerHTML = 'Error';
+            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+        });
     }
 </script>
 {% endblock %}

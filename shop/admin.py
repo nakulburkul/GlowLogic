@@ -6,6 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from import_export.admin import ImportExportModelAdmin 
 from unfold.contrib.import_export.forms import ExportForm, ImportForm 
 from .models import Product, Wishlist, ExtraSize, OutboundClick
+from django.utils.html import format_html # Add this import for the preview trick!
 
 class PriceRangeFilter(admin.SimpleListFilter):
     title = 'Cost / Price Range'
@@ -36,6 +37,7 @@ class ProductAdmin(ModelAdmin, ImportExportModelAdmin):
     import_form_class = ImportForm
     export_form_class = ExportForm
     
+    
     # 🚀 Tells Django to append our custom buttons exactly here!
     change_form_template = "admin/custom_change_form.html"
     
@@ -54,10 +56,13 @@ class ProductAdmin(ModelAdmin, ImportExportModelAdmin):
     list_filter = ('is_active', 'category', PriceRangeFilter, 'suitable', 'auto_stack') 
     search_fields = ('name', 'category', 'suitable') 
 
+# ➔ ADD THIS EXACT LINE RIGHT HERE:
+    readonly_fields = ('image_preview',)
+
     fieldsets = (
         ('📦 Basic Information', {
             # 🚀 ADDED 'size' HERE SO IT SHOWS UP IN THE ADMIN FORM!
-            'fields': ('is_active', 'name', 'category','size', 'price','mrp', 'suitable', 'stock', 'image','show_amazon', 'show_flipkart', 'show_myntra')
+            'fields': ('is_active', 'name', 'category','size', 'price','mrp', 'suitable','image_url', 'image_preview', 'stock', 'image','show_amazon', 'show_flipkart', 'show_myntra')
         }),
         ('🔗 Grouping Data', {
             # 🚀 Added core_name here so you can link different sizes!
@@ -110,9 +115,19 @@ class ProductAdmin(ModelAdmin, ImportExportModelAdmin):
         if prev_obj:
             return HttpResponseRedirect(reverse("admin:shop_product_change", args=[prev_obj.id]))
         return response
+    
+    # Put this inside the ProductAdmin class
+    def image_preview(self, obj):
+        if obj.image_url:
+            # Renders a tiny 50px image in the admin panel
+            return format_html('<img src="{}" style="max-height: 50px; max-width: 50px; border-radius: 5px;" />', obj.image_url)
+        return "No Image"
+    
+    image_preview.short_description = 'Preview'
 
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Wishlist)
+    
 
 
 # ==========================================

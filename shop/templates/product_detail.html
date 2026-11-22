@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}{{ product.name }} | GlowLogic{% endblock %}
+
 {% block content %}
 <style>
     /* 🚀 PREMIUM E-COMMERCE STYLING */
@@ -70,9 +72,9 @@
         
         <div class="col-lg-5">
             <div class="sticky-image-wrapper">
-<div class="detail-img-card">
-    <img src="{% if product.image %}{{ product.image.url }}{% else %}https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide{% endif %}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-</div>
+                <div class="detail-img-card">
+                    <img src="{% if product.image %}{{ product.image.url }}{% else %}https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide{% endif %}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                </div>
             </div>
         </div>
         
@@ -124,7 +126,7 @@
                         {% endfor %}
                     {% endif %}
 
-{% for extra in product.extra_sizes.all %}
+                    {% for extra in product.extra_sizes.all %}
                         <div class="dropdown d-inline-block">
                             <button class="badge inactive-variant-badge text-decoration-none rounded-pill px-4 py-2 fs-6 shadow-sm transition-hover dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 {{ extra.size_name }} 
@@ -180,7 +182,7 @@
                                     <span class="text-danger fw-bold small">Out of Stock</span>
                                 {% endif %}
                             </div>
-                            <a href="{% url 'track_outbound' product.id %}" target="_blank" class="btn {% if product.amazon_price and product.amazon_price != 'None' and product.amazon_price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
+                            <a href="{% url 'track_outbound' product.id 'amazon' %}" target="_blank" class="btn {% if product.amazon_price and product.amazon_price != 'None' and product.amazon_price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
                                 {% if product.amazon_price and product.amazon_price != 'None' and product.amazon_price != '0' %}Buy Now ➔{% else %}Check Site{% endif %}
                             </a>
                         </div>
@@ -206,7 +208,7 @@
                                     <span class="text-danger fw-bold small">Out of Stock</span>
                                 {% endif %}
                             </div>
-                            <a href="{% if product.myntra_link and product.myntra_link != 'None' %}{{ product.myntra_link }}{% else %}https://www.myntra.com/search?q={{ product.name|urlencode }}{% endif %}" target="_blank" class="btn {% if product.myntra_price and product.myntra_price != 'None' and product.myntra_price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
+                            <a href="{% url 'track_outbound' product.id 'myntra' %}" target="_blank" class="btn {% if product.myntra_price and product.myntra_price != 'None' and product.myntra_price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
                                 {% if product.myntra_price and product.myntra_price != 'None' and product.myntra_price != '0' %}Buy Now ➔{% else %}Check Site{% endif %}
                             </a>
                         </div>
@@ -232,7 +234,7 @@
                                     <span class="text-danger fw-bold small">Out of Stock</span>
                                 {% endif %}
                             </div>
-                            <a href="{% if product.flipkart_link and product.flipkart_link != 'None' %}{{ product.flipkart_link }}{% else %}https://www.flipkart.com/search?q={{ product.name|urlencode }}&affid=glowguide_id{% endif %}" target="_blank" class="btn {% if product.flipkart_price and product.flipkart_price != 'None' and product.flipkart_price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
+                            <a href="{% url 'track_outbound' product.id 'flipkart' %}" target="_blank" class="btn {% if product.flipkart_price and product.flipkart_price != 'None' and product.flipkart_price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
                                 {% if product.flipkart_price and product.flipkart_price != 'None' and product.flipkart_price != '0' %}Buy Now ➔{% else %}Check Site{% endif %}
                             </a>
                         </div>
@@ -261,7 +263,7 @@
                                     <span class="text-danger fw-bold small">Out of Stock</span>
                                 {% endif %}
                             </div>
-                            <a href="{{ product.vendor_link }}" target="_blank" class="btn {% if product.vendor_price and product.vendor_price != 'None' and product.vendor_price != '' or product.price and product.price != 'None' and product.price != '0.00' and product.price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
+                            <a href="{% url 'track_outbound' product.id 'vendor' %}" target="_blank" class="btn {% if product.vendor_price and product.vendor_price != 'None' and product.vendor_price != '' or product.price and product.price != 'None' and product.price != '0.00' and product.price != '0' %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 fw-bold shadow-sm text-nowrap">
                                 {% if product.vendor_price and product.vendor_price != 'None' and product.vendor_price != '' or product.price and product.price != 'None' and product.price != '0.00' and product.price != '0' %}Buy Now ➔{% else %}Check Site{% endif %}
                             </a>
                         </div>
@@ -376,47 +378,61 @@
         <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 g-md-4">
             {% for p in similar_products %}
             <div class="col">
-                <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden product-card transition-hover position-relative">
+                <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden product-card transition-hover">
                    
-                    <div class="position-absolute top-0 end-0 p-2 mt-1 me-1" style="z-index: 10;">
-                        {% if user.is_authenticated %}
-                            <a href="{% url 'toggle_wishlist' p.id %}" class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center transition-hover border-0" style="width: 36px; height: 36px; background: rgba(255,255,255,0.85); backdrop-filter: blur(4px);" title="Save to Wishlist">
-                                <i class="{% if p.id in saved_product_ids %}fas fa-heart text-danger{% else %}far fa-heart text-muted{% endif %}" style="font-size: 0.9rem;"></i>
-                            </a>
-                        {% else %}
-                            <a href="{% url 'login' %}" class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center transition-hover border-0" style="width: 36px; height: 36px; background: rgba(255,255,255,0.85); backdrop-filter: blur(4px);" title="Login to Save">
-                                <i class="far fa-heart text-muted" style="font-size: 0.9rem;"></i>
-                            </a>
-                        {% endif %}
-                    </div>
-
                    <a href="{% url 'product_detail' p.id %}" class="text-decoration-none">
-<div class="p-3 text-center border-bottom bg-white overflow-hidden">
-    <img src="{% if p.image %}{{ p.image.url }}{% else %}https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide{% endif %}" class="img-fluid product-img-zoom" style="height: 200px; width: 100%; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
-</div>
+                        <div class="p-3 text-center border-bottom bg-white overflow-hidden" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                            <img src="{% if p.image %}{{ p.image.url }}{% else %}https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide{% endif %}" class="img-fluid product-img-zoom" style="height: 200px; width: 100%; object-fit: contain; mix-blend-mode: multiply;" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/fff9fa/d81b60.jpg?text=GlowGuide';">
+                        </div>
                     </a>
                     
-                    <div class="card-body d-flex flex-column p-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill fw-bold" style="font-size: 0.65rem;">{{ p.category }}</span>
+                    <div class="card-body d-flex flex-column p-3 flex-grow-1">
+                        
+                        <div class="mb-2">
+                            <span class="badge bg-light text-dark border small text-uppercase" style="font-size: 0.6rem; letter-spacing: 0.5px; border-radius: 4px;">{{ p.category }}</span>
                         </div>
                         
                         <a href="{% url 'product_detail' p.id %}" class="text-decoration-none text-dark" title="{{ p.name }}">
-                            <h6 class="fw-bold mb-2" style="font-size: 0.9rem; line-height: 1.4; height: 2.8em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                            <h6 class="fw-bold mb-2" style="font-size: 0.9rem; line-height: 1.4; height: 2.8em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #1e293b;">
                                 {{ p.name }}
                             </h6>
                         </a>
                         
-                        <div class="mt-auto d-flex justify-content-between align-items-end pt-2">
-                            <div>
-                                {% if p.lowest_price %}
-                                    <span class="fw-bold text-success" style="font-size: 1.05rem;">₹{{ p.lowest_price }}</span>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <p class="text-muted mb-0 small" style="font-size: 0.75rem;">For: <span class="text-dark fw-bold">{{ p.suitable|default:"All Skin Types" }}</span></p>
+                            {% if p.size %}
+                                <span class="text-muted fw-medium" style="font-size: 0.75rem;"><i class="fas fa-box-open me-1 opacity-50"></i>{{ p.size }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mt-auto pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    {% if p.lowest_price %}
+                                        <div class="d-flex align-items-baseline flex-wrap gap-1">
+                                            <span class="fw-bold text-success" style="font-size: 1.1rem;">₹{{ p.lowest_price }}</span>
+                                            {% if p.discount_percentage %}
+                                                <del class="text-muted" style="font-size: 0.75rem;">₹{{ p.auto_mrp }}</del>
+                                                <span class="text-danger fw-bold" style="font-size: 0.7rem;">({{ p.discount_percentage }}% OFF)</span>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark border rounded-pill">Check Site</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if user.is_authenticated %}
+                                    <a href="{% url 'toggle_wishlist' p.id %}" class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center transition-hover flex-shrink-0" style="width: 32px; height: 32px; border: 1px solid #e2e8f0; background: #f8fafc;" title="Save to Wishlist">
+                                        <i class="{% if p.id in saved_product_ids %}fas fa-heart text-danger{% else %}far fa-heart text-muted{% endif %}" style="font-size: 0.8rem;"></i>
+                                    </a>
                                 {% else %}
-                                    <span class="badge bg-light text-dark border">Check Site</span>
+                                    <a href="{% url 'login' %}" class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center transition-hover flex-shrink-0" style="width: 32px; height: 32px; border: 1px solid #e2e8f0; background: #f8fafc;" title="Login to Save">
+                                        <i class="far fa-heart text-muted" style="font-size: 0.8rem;"></i>
+                                    </a>
                                 {% endif %}
                             </div>
                             
-                            <a href="{% url 'product_detail' p.id %}" class="btn btn-dark btn-sm rounded-pill fw-bold px-3">View</a>
+                            <a href="{% url 'product_detail' p.id %}" class="btn btn-dark w-100 py-2 rounded-pill fw-bold shadow-sm" style="font-size: 0.85rem;">View Details</a>
                         </div>
                     </div>
                 </div>

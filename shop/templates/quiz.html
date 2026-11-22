@@ -3,106 +3,206 @@
 
 {% block content %}
 <style>
-    /* Premium Quiz UI Styling */
+    /* =========================================
+       PREMIUM QUIZ AESTHETICS
+       ========================================= */
+    body {
+        background-color: #f8fafc; /* Soft premium background */
+    }
+
+    .quiz-container {
+        max-width: 850px;
+        margin: 0 auto;
+    }
+
     .quiz-step {
         display: none;
-        animation: fadeIn 0.4s ease-in-out;
+        animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+        transform: translateY(20px);
     }
     .quiz-step.active {
         display: block;
     }
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
+
+    @keyframes slideUpFade {
         to { opacity: 1; transform: translateY(0); }
     }
     
+    /* 🚀 PREMIUM PROGRESS BAR */
+    .progress-wrapper {
+        height: 6px;
+        background-color: #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 0 auto 40px;
+        max-width: 250px;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #d81b60, #f472b6);
+        border-radius: 10px;
+        transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+    }
+    
     /* Hidden Radio Buttons */
-    .quiz-option input[type="radio"] {
+    .quiz-option input[type="radio"],
+    .quiz-option input[type="checkbox"] {
         display: none;
     }
-    /* Large Clickable Cards */
+    
+    /* 🚀 SLEEK INTERACTIVE TILES */
     .quiz-option label {
         display: flex;
-        align-items: center;
-        padding: 20px;
-        border: 2px solid #e9ecef;
-        border-radius: 16px;
+        align-items: flex-start;
+        padding: 24px;
+        border: 2px solid #f1f5f9;
+        border-radius: 20px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
         background: white;
         height: 100%;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        position: relative;
+        overflow: hidden;
     }
+    
     .quiz-option label:hover {
-        border-color: #d81b60;
-        background-color: #fffafb;
-        transform: translateY(-2px);
+        border-color: #fbcfe8;
+        transform: translateY(-4px);
+        box-shadow: 0 12px 25px rgba(216, 27, 96, 0.08);
     }
+    
     /* Selected State */
-    .quiz-option input[type="radio"]:checked + label {
+    .quiz-option input[type="radio"]:checked + label,
+    .quiz-option input[type="checkbox"]:checked + label {
         border-color: #d81b60;
         background-color: #fff0f5;
-        box-shadow: 0 4px 15px rgba(216, 27, 96, 0.15);
+        box-shadow: 0 10px 30px rgba(216, 27, 96, 0.12);
     }
-    .emoji-icon {
-        font-size: 2rem;
-        margin-right: 15px;
+    
+    /* Checkmark Indicator */
+    .quiz-option label::after {
+        content: '✓';
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 24px;
+        height: 24px;
+        background: #d81b60;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        opacity: 0;
+        transform: scale(0.5);
+        transition: all 0.3s ease;
+    }
+    .quiz-option input[type="radio"]:checked + label::after,
+    .quiz-option input[type="checkbox"]:checked + label::after {
+        opacity: 1;
+        transform: scale(1);
+    }
+    
+    .emoji-wrapper {
+        width: 50px;
+        height: 50px;
+        background: #f8fafc;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-right: 18px;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    .quiz-option input:checked + label .emoji-wrapper {
+        background: white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    /* Input Enhancements */
+    .premium-input {
+        background-color: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 15px 20px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .premium-input:focus {
+        background-color: white;
+        border-color: #d81b60;
+        box-shadow: 0 0 0 4px rgba(216, 27, 96, 0.1);
+        outline: none;
     }
 </style>
 
-<div class="container py-5" style="max-width: 800px;">
+<div class="container py-5 quiz-container">
     
     <div class="text-center mb-5">
-        <span class="badge bg-dark rounded-pill px-3 py-2 mb-3">Step <span id="currentStepNum">1</span> of 5</span>
-        <h1 class="fw-bold mb-2" style="font-family: 'Playfair Display', serif; color: #2c3e50;">Let's build your routine.</h1>
-        <div class="progress mt-4 rounded-pill" style="height: 8px; max-width: 300px; margin: 0 auto;">
-            <div class="progress-bar" id="quizProgress" role="progressbar" style="width: 20%; background-color: #d81b60;"></div>
+        <span class="badge rounded-pill px-3 py-2 mb-3 shadow-sm" style="background-color: white; color: #64748b; border: 1px solid #e2e8f0; letter-spacing: 1px; text-transform: uppercase; font-size: 0.7rem;">
+            Step <span id="currentStepNum" class="text-dark fw-bold">1</span> of 5
+        </span>
+        <h1 class="fw-bold mb-3" style="font-family: 'Playfair Display', serif; color: #0f172a; font-size: 2.8rem;">Let's build your routine.</h1>
+        <p class="text-muted mx-auto" style="max-width: 500px;">Answer a few quick questions so our AI can formulate the perfect regimen for your unique skin.</p>
+        
+        <div class="progress-wrapper mt-4 shadow-sm">
+            <div class="progress-fill" id="quizProgress" style="width: 20%;"></div>
         </div>
     </div>
 
-    <div class="card shadow-lg border-0 rounded-4 p-4 p-md-5">
+    <div class="card shadow-lg border-0 rounded-4 p-4 p-md-5 bg-white" style="box-shadow: 0 20px 40px rgba(0,0,0,0.04) !important;">
         <form method="POST" action="{% url 'skin_quiz' %}" id="skinQuizForm">
             {% csrf_token %}
 
             <div class="quiz-step active" id="step1">
-                <h3 class="fw-bold mb-4 text-center">What is your primary skin goal?</h3>
-                <div class="row g-3">
+                <h3 class="fw-bold mb-2 text-center" style="color: #1e293b;">What is your primary skin goal?</h3>
+                <p class="text-center text-muted mb-4 small">Select the main concern you want to target.</p>
+                
+                <div class="row g-3 g-md-4">
                     <div class="col-md-6 quiz-option">
                         <input type="radio" name="concern" id="c1" value="acne" required>
                         <label for="c1">
-                            <span class="emoji-icon">🦠</span>
-                            <div>
-                                <h6 class="fw-bold mb-0">Clear Breakouts</h6>
-                                <span class="small text-muted">Treat acne and prevent blemishes</span>
+                            <div class="emoji-wrapper">🦠</div>
+                            <div class="pe-4">
+                                <h6 class="fw-bold mb-1 text-dark" style="font-size: 1.05rem;">Clear Breakouts</h6>
+                                <span class="small text-muted" style="line-height: 1.4; display: block;">Treat active acne, fade marks, and prevent future blemishes.</span>
                             </div>
                         </label>
                     </div>
                     <div class="col-md-6 quiz-option">
                         <input type="radio" name="concern" id="c2" value="glow">
                         <label for="c2">
-                            <span class="emoji-icon">✨</span>
-                            <div>
-                                <h6 class="fw-bold mb-0">Radiant Glow</h6>
-                                <span class="small text-muted">Fade dark spots and brighten</span>
+                            <div class="emoji-wrapper">✨</div>
+                            <div class="pe-4">
+                                <h6 class="fw-bold mb-1 text-dark" style="font-size: 1.05rem;">Radiant Glow</h6>
+                                <span class="small text-muted" style="line-height: 1.4; display: block;">Fade dark spots, tackle dullness, and brighten overall tone.</span>
                             </div>
                         </label>
                     </div>
                     <div class="col-md-6 quiz-option">
                         <input type="radio" name="concern" id="c3" value="hydration">
                         <label for="c3">
-                            <span class="emoji-icon">💧</span>
-                            <div>
-                                <h6 class="fw-bold mb-0">Deep Hydration</h6>
-                                <span class="small text-muted">Fix dry, flaky, or tight skin</span>
+                            <div class="emoji-wrapper">💧</div>
+                            <div class="pe-4">
+                                <h6 class="fw-bold mb-1 text-dark" style="font-size: 1.05rem;">Deep Hydration</h6>
+                                <span class="small text-muted" style="line-height: 1.4; display: block;">Fix dry, flaky, or tight skin and restore your moisture barrier.</span>
                             </div>
                         </label>
                     </div>
                     <div class="col-md-6 quiz-option">
                         <input type="radio" name="concern" id="c4" value="aging">
                         <label for="c4">
-                            <span class="emoji-icon">⏳</span>
-                            <div>
-                                <h6 class="fw-bold mb-0">Anti-Aging</h6>
-                                <span class="small text-muted">Smooth fine lines and firm skin</span>
+                            <div class="emoji-wrapper">⏳</div>
+                            <div class="pe-4">
+                                <h6 class="fw-bold mb-1 text-dark" style="font-size: 1.05rem;">Anti-Aging</h6>
+                                <span class="small text-muted" style="line-height: 1.4; display: block;">Smooth fine lines, boost collagen, and firm up skin texture.</span>
                             </div>
                         </label>
                     </div>
@@ -110,80 +210,103 @@
             </div>
 
             <div class="quiz-step" id="step2">
-                <h3 class="fw-bold mb-4 text-center">It's 2 PM. How does your face feel?</h3>
-                <div class="row g-3">
+                <h3 class="fw-bold mb-2 text-center" style="color: #1e293b;">It's 2 PM. How does your face feel?</h3>
+                <p class="text-center text-muted mb-4 small">This helps us determine your baseline skin type.</p>
+                
+                <div class="row g-3 g-md-4">
                     <div class="col-12 quiz-option">
                         <input type="radio" name="midday_feel" id="feel1" value="shiny" required>
-                        <label for="feel1">
-                            <span class="emoji-icon">🍳</span>
-                            <h6 class="fw-bold mb-0">Shiny or greasy, especially on my forehead and nose.</h6>
+                        <label for="feel1" class="align-items-center">
+                            <div class="emoji-wrapper">🍳</div>
+                            <h6 class="fw-bold mb-0 text-dark">Shiny or greasy, especially on my forehead and nose.</h6>
                         </label>
                     </div>
                     <div class="col-12 quiz-option">
                         <input type="radio" name="midday_feel" id="feel2" value="tight">
-                        <label for="feel2">
-                            <span class="emoji-icon">🌵</span>
-                            <h6 class="fw-bold mb-0">Tight, dry, or a bit flaky.</h6>
+                        <label for="feel2" class="align-items-center">
+                            <div class="emoji-wrapper">🌵</div>
+                            <h6 class="fw-bold mb-0 text-dark">Tight, dry, or a bit flaky. I need moisturizer.</h6>
                         </label>
                     </div>
                     <div class="col-12 quiz-option">
                         <input type="radio" name="midday_feel" id="feel3" value="normal">
-                        <label for="feel3">
-                            <span class="emoji-icon">😌</span>
-                            <h6 class="fw-bold mb-0">Normal, or just slightly oily in the T-zone.</h6>
+                        <label for="feel3" class="align-items-center">
+                            <div class="emoji-wrapper">😌</div>
+                            <h6 class="fw-bold mb-0 text-dark">Normal, comfortable, or just slightly oily in the T-zone.</h6>
                         </label>
                     </div>
                 </div>
             </div>
 
             <div class="quiz-step" id="step3">
-                <h3 class="fw-bold mb-4 text-center">Does your skin get red or irritated easily?</h3>
-                <div class="row g-3">
+                <h3 class="fw-bold mb-2 text-center" style="color: #1e293b;">Does your skin get red or irritated easily?</h3>
+                <p class="text-center text-muted mb-4 small">We'll avoid harsh actives if you have a delicate barrier.</p>
+                
+                <div class="row g-3 g-md-4">
                     <div class="col-md-6 quiz-option">
                         <input type="radio" name="redness" id="red1" value="often" required>
                         <label for="red1">
-                            <span class="emoji-icon">🍅</span>
-                            <h6 class="fw-bold mb-0">Yes, very often. Certain products sting.</h6>
+                            <div class="emoji-wrapper">🍅</div>
+                            <div class="pe-3">
+                                <h6 class="fw-bold mb-1 text-dark">Yes, often.</h6>
+                                <span class="small text-muted">Products sting easily and I get red blotches.</span>
+                            </div>
                         </label>
                     </div>
                     <div class="col-md-6 quiz-option">
                         <input type="radio" name="redness" id="red2" value="rarely">
                         <label for="red2">
-                            <span class="emoji-icon">🛡️</span>
-                            <h6 class="fw-bold mb-0">Rarely. My skin is pretty tough.</h6>
+                            <div class="emoji-wrapper">🛡️</div>
+                            <div class="pe-3">
+                                <h6 class="fw-bold mb-1 text-dark">Rarely.</h6>
+                                <span class="small text-muted">My skin is pretty tough and handles most things.</span>
+                            </div>
                         </label>
                     </div>
                 </div>
             </div>
 
             <div class="quiz-step" id="step4">
-                <h3 class="fw-bold mb-4 text-center">Do you have a favorite brand?</h3>
-                <p class="text-center text-muted mb-4">We'll prioritize this brand in your results if we find a good match.</p>
-                <select name="preferred_brand" class="form-select form-select-lg border-2 rounded-3 mb-3">
-                    <option value="Any">Surprise me! (Any Brand)</option>
-                    <option value="Minimalist">Minimalist</option>
-                    <option value="COSRX">COSRX</option>
-                    <option value="Cetaphil">Cetaphil</option>
-                    <option value="Plum">Plum</option>
-                    <option value="Dot & Key">Dot & Key</option>
-                    <option value="The Derma Co">The Derma Co</option>
-                </select>
-            </div>
-
-            <div class="quiz-step" id="step5">
-                <h3 class="fw-bold mb-4 text-center">What is your maximum budget?</h3>
-                <p class="text-center text-muted mb-4">For the *entire* routine combined.</p>
+                <div class="text-center mb-4">
+                    <div class="d-inline-flex justify-content-center align-items-center bg-light rounded-circle mb-3" style="width: 70px; height: 70px;">
+                        <span class="fs-1">🛍️</span>
+                    </div>
+                    <h3 class="fw-bold mb-2" style="color: #1e293b;">Do you have a favorite brand?</h3>
+                    <p class="text-muted small">We'll prioritize this brand in your results if we find a good match.</p>
+                </div>
                 
-                <div class="d-flex align-items-center bg-light p-4 rounded-4 mb-4 border">
-                    <span class="fs-3 fw-bold text-muted me-2">₹</span>
-                    <input type="number" name="budget" class="form-control form-control-lg border-0 bg-transparent fw-bold fs-3" placeholder="2500" value="2500" required>
+                <div class="mx-auto" style="max-width: 500px;">
+                    <select name="preferred_brand" class="form-select premium-input">
+                        <option value="Any">✨ Surprise me! (Any Brand)</option>
+                        <option value="Minimalist">Minimalist</option>
+                        <option value="COSRX">COSRX</option>
+                        <option value="Cetaphil">Cetaphil</option>
+                        <option value="Plum">Plum</option>
+                        <option value="Dot & Key">Dot & Key</option>
+                        <option value="The Derma Co">The Derma Co</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between mt-5">
-                <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" id="prevBtn" style="display: none;">← Back</button>
-                <button type="button" class="btn btn-dark rounded-pill px-5 fw-bold ms-auto" id="nextBtn">Continue →</button>
-                <button type="submit" class="btn btn-success rounded-pill px-5 fw-bold ms-auto" id="submitBtn" style="display: none;">Build My Routine ✨</button>
+            <div class="quiz-step" id="step5">
+                <div class="text-center mb-4">
+                    <div class="d-inline-flex justify-content-center align-items-center bg-light rounded-circle mb-3" style="width: 70px; height: 70px;">
+                        <span class="fs-1">💸</span>
+                    </div>
+                    <h3 class="fw-bold mb-2" style="color: #1e293b;">What is your maximum budget?</h3>
+                    <p class="text-muted small">This is for the <strong>entire</strong> multi-step routine combined.</p>
+                </div>
+                
+                <div class="mx-auto position-relative" style="max-width: 400px;">
+                    <span class="position-absolute top-50 translate-middle-y fs-4 fw-bold text-muted" style="left: 20px;">₹</span>
+                    <input type="number" name="budget" class="form-control premium-input fs-3 fw-bold text-dark" style="padding-left: 45px; height: 70px;" placeholder="2500" value="2500" required>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-5 pt-3 border-top">
+                <button type="button" class="btn btn-light rounded-pill px-4 py-2 fw-bold text-muted transition-hover shadow-sm" id="prevBtn" style="display: none; border: 1px solid #e2e8f0;">← Back</button>
+                <button type="button" class="btn btn-dark rounded-pill px-5 py-2 fw-bold ms-auto transition-hover shadow-sm" id="nextBtn">Continue →</button>
+                <button type="submit" class="btn rounded-pill px-5 py-2 fw-bold ms-auto transition-hover shadow-sm text-white" id="submitBtn" style="display: none; background-color: #d81b60;">Build My Routine ✨</button>
             </div>
 
         </form>

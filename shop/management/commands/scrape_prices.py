@@ -142,7 +142,7 @@ class Command(BaseCommand):
         start_time = time.time()
 
         self.stdout.write("  🔍 Fetching products from the database...")
-        products = list(Product.objects.filter(is_active=True).order_by('-id'))[:30]
+        products = list(Product.objects.filter(is_active=True).order_by('-id'))[61:101]
         
         if not products:
             self.stdout.write(self.style.ERROR("  ❌ No active products found."))

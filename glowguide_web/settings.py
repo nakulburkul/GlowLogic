@@ -166,3 +166,17 @@ DEFAULT_FROM_EMAIL = 'GlowGuide <nakulburkul@gmail.com>'
 # settings.py
 MEDIA_URL = '/product_images/'
 MEDIA_ROOT = BASE_DIR / 'product_images'
+
+
+# ==========================================================
+# 🚀 CELERY & REDIS CONFIGURATION
+# ==========================================================
+# The URL where Redis is running locally
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+
+# Accept content types in specific formats
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE

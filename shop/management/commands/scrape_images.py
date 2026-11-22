@@ -1,161 +1,178 @@
 import time
-import requests
 import re
-import os
+import json
+import cloudscraper
 from bs4 import BeautifulSoup
 from django.core.management.base import BaseCommand
-from django.conf import settings
-from django.core.files.base import ContentFile
-from django.utils.text import slugify
 from shop.models import Product
 
 class Command(BaseCommand):
-    help = 'LIGHTNING FAST Image Scraper based on Priority Queue (Amazon > Flipkart > Myntra > Vendor)'
+    help = 'ULTIMATE Image Scraper - Cloudscraper + SEO Data Hijacker'
 
-    def resolve_deep_link(self, url, headers):
-        """Quickly unrolls affiliate shortlinks to get the real URL."""
+    def resolve_deep_link(self, url):
+        """Unrolls affiliate shortlinks using Cloudscraper to bypass security checks."""
         if not url: return url
         try:
-            session = requests.Session()
-            response = session.get(url, headers=headers, timeout=5, allow_redirects=True)
+            scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
+            response = scraper.get(url, timeout=10, allow_redirects=True)
+            
             if any(short in response.url for short in ["fktr.in", "myntr.it", "ekaro.in", "bit.ly", "bitli.in"]):
                 soup = BeautifulSoup(response.content, 'html.parser')
                 meta_refresh = soup.find('meta', attrs={'http-equiv': 'refresh'})
                 if meta_refresh and 'url=' in meta_refresh.get('content', '').lower():
                     next_url = meta_refresh['content'].split('url=')[-1].strip("'\" ")
-                    response = session.get(next_url, headers=headers, timeout=5, allow_redirects=True)
+                    response = scraper.get(next_url, timeout=10, allow_redirects=True)
             return response.url
         except Exception:
             return url
 
-    def is_image_missing(self, product):
-        """Checks if the physical file is missing from your hard drive."""
-        media_folder = os.path.join(settings.BASE_DIR, 'product_images')
-        static_folder = os.path.join(settings.BASE_DIR, 'static', 'images')
-        
-        possible_paths = [str(product.image) if product.image else ""]
-        
-        for messy_path in possible_paths:
-            if not messy_path: continue
-            clean_filename = os.path.basename(messy_path.replace('\\', '/'))
-            if os.path.exists(os.path.join(media_folder, clean_filename)) or os.path.exists(os.path.join(static_folder, clean_filename)):
-                return False # Image exists!
-        return True # Image is missing
+    def extract_from_json_ld(self, soup):
+        """Hijacks the SEO data websites prepare for Google to find the perfect image."""
+        scripts = soup.find_all('script', type='application/ld+json')
+        for script in scripts:
+            try:
+                # Sometimes script tags are empty or badly formatted
+                if not script.string: continue
+                
+                data = json.loads(script.string)
+                
+                # Helper function to dig out the image URL from the JSON mess
+                def get_img(obj):
+                    if isinstance(obj, dict) and obj.get('@type') == 'Product' and 'image' in obj:
+                        img_data = obj['image']
+                        if isinstance(img_data, str): return img_data
+                        elif isinstance(img_data, list) and len(img_data) > 0: 
+                            return img_data[0] if isinstance(img_data[0], str) else img_data[0].get('url')
+                        elif isinstance(img_data, dict): return img_data.get('url')
+                    return None
+
+                # JSON-LD can be a list of items or a single dictionary
+                if isinstance(data, list):
+                    for item in data:
+                        if img := get_img(item): return img
+                elif isinstance(data, dict):
+                    if '@graph' in data: # Common in Yoast SEO
+                        for item in data['@graph']:
+                            if img := get_img(item): return img
+                    else:
+                        if img := get_img(data): return img
+            except Exception:
+                continue
+        return None
 
     def fetch_image_url(self, final_url, platform):
-        """Uses fast HTTP requests to rip the image URL from meta tags."""
         if not final_url or "http" not in final_url: return None
 
-        # Anti-bot headers to trick Amazon/Flipkart into giving us the HTML
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        }
-
         try:
-            response = requests.get(final_url, headers=headers, timeout=5)
-            if response.status_code != 200: return None
-
-            soup = BeautifulSoup(response.text, 'html.parser')
+            scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
+            response = scraper.get(final_url, timeout=15)
             
-            # 1. The universal fast method: Open Graph Meta Tags
-            og_image = soup.find('meta', property='og:image')
-            if og_image and og_image.get('content'):
-                img_url = og_image['content']
-                # Amazon sometimes puts a tiny 50x50 image in the OG tag. We reject those.
-                if "50_.jpg" not in img_url and "SR38,50" not in img_url:
-                    return img_url
+            # If the site outright blocks us (403 Forbidden), return None
+            if response.status_code != 200: return None
+            
+            html_text = response.text
+            soup = BeautifulSoup(html_text, 'html.parser')
 
-            # 2. Platform specific fast fallbacks if OG tags fail
+            # ---------------------------------------------------------
+            # 1. THE NEW SEO HIJACKER (Works brilliantly for Vendor links)
+            # ---------------------------------------------------------
+            seo_image = self.extract_from_json_ld(soup)
+            if seo_image and "http" in seo_image:
+                # Make sure it's not a tiny thumbnail or logo
+                bad_seo = ["logo", "avatar", "50x50", "placeholder"]
+                if not any(bad in seo_image.lower() for bad in bad_seo):
+                    return seo_image
+
+            # ---------------------------------------------------------
+            # 2. X-RAY EXTRACTION LOGIC (For Amazon/Flipkart/Myntra)
+            # ---------------------------------------------------------
             if platform == 'amazon':
-                img_elem = soup.select_one('#landingImage, #imgBlkFront')
-                if img_elem: return img_elem.get('data-old-hires') or img_elem.get('src')
-            elif platform == 'flipkart':
-                img_elem = soup.select_one('img._396cs4, img._2r_T1I')
-                if img_elem: return img_elem.get('src')
-            elif platform == 'myntra':
-                # Myntra puts images in a script tag sometimes
-                match = re.search(r'"image"\s*:\s*"([^"]+)"', response.text)
+                match = re.search(r'"large":"(https://m\.media-amazon\.com/images/I/[^"]+)"', html_text)
                 if match: return match.group(1)
+                
+            elif platform == 'flipkart':
+                matches = re.findall(r'(https://rukminim[^"\'\)]+)', html_text)
+                for img in matches:
+                    if 'logo' not in img.lower() and 'q=' in img:
+                        return re.sub(r'/[0-9]+/[0-9]+/', '/832/832/', img)
+                        
+            elif platform == 'myntra':
+                match = re.search(r'"imageURL":"([^"]+)"', html_text)
+                if match: return match.group(1)
+
+            elif platform == 'vendor':
+                vendor_img = soup.select_one('.product-image img, .product-featured-media, #ProductPhotoImg, .product__media img, .product-single__photo')
+                if vendor_img:
+                    img_src = vendor_img.get('data-src') or vendor_img.get('src')
+                    if img_src:
+                        return f"https:{img_src}" if img_src.startswith('//') else img_src
+
+            # ---------------------------------------------------------
+            # 3. FALLBACK: Safe Open Graph Meta Tags
+            # ---------------------------------------------------------
+            if og_image := soup.find('meta', property='og:image'):
+                if img_url := og_image.get('content'):
+                    bad_strings = ["50_.jpg", "SR38,50", "ckassets", "flipkart-direct", "amazon_logo", "myntra_logo", "default", "icon"]
+                    if not any(bad in img_url.lower() for bad in bad_strings):
+                        return img_url
 
         except Exception:
             return None
+            
         return None
 
-    def auto_download_image(self, product, img_url):
-        """Downloads the actual file and saves it cleanly to Django."""
-        if not img_url or not img_url.startswith('http'): return False
-            
-        try:
-            headers = {"User-Agent": "Mozilla/5.0"}
-            response = requests.get(img_url, headers=headers, timeout=5)
-            
-            if response.status_code == 200:
-                # Creates a perfect filename with no spaces
-                safe_name = slugify(product.name)[:30]
-                filename = f"{product.id}_{safe_name}.jpg"
-                
-                # Save it
-                product.image.save(filename, ContentFile(response.content), save=True)
-                return True
-        except Exception:
-            pass
-        return False
-
     def handle(self, *args, **kwargs):
-        self.stdout.write(self.style.WARNING("⚡ Firing up LIGHTNING FAST Image Scraper..."))
+        self.stdout.write(self.style.WARNING("⚡ Firing up the SEO Hijacker Scraper..."))
         start_time = time.time()
 
-        # Grab all active products
         products = Product.objects.filter(is_active=True).order_by('-id')
-        
-        # Filter down to ONLY products that are physically missing their image
-        missing_image_products = [p for p in products if self.is_image_missing(p)]
+        missing_image_products = [
+            p for p in products 
+            if not p.image_url or 'ckassets' in p.image_url or 'flipkart-direct' in p.image_url
+        ]
         
         if not missing_image_products:
-            self.stdout.write(self.style.SUCCESS("✅ All products already have perfect images! Nothing to do."))
+            self.stdout.write(self.style.SUCCESS("✅ All products have valid image URLs!"))
             return
 
-        self.stdout.write(self.style.ERROR(f"🚨 Found {len(missing_image_products)} products missing images. Beginning rapid download..."))
-        
-        req_headers = {"User-Agent": "Mozilla/5.0"}
+        self.stdout.write(self.style.ERROR(f"🚨 Found {len(missing_image_products)} products needing images. Fetching..."))
 
-        # 🚀 THE PRIORITY QUEUE
         priority_queue = [
+            ('vendor', 'vendor_link'),   # Moved Vendor to the TOP because SEO extraction is highly reliable!
             ('amazon', 'amazon_link'),
             ('flipkart', 'flipkart_link'),
-            ('myntra', 'myntra_link'),
-            ('vendor', 'vendor_link')
+            ('myntra', 'myntra_link')
         ]
 
         success_count = 0
 
         for product in missing_image_products:
-            self.stdout.write(f"\n🔄 Fixing: {product.name[:35]}...")
+            self.stdout.write(f"\n🔄 Scraping: {product.name[:35]}...")
             downloaded = False
 
             for platform, link_field in priority_queue:
                 url = getattr(product, link_field)
-                if url:
-                    self.stdout.write(f"      ➔ Trying {platform.title()}...")
-                    final_url = self.resolve_deep_link(url, req_headers)
+                if url and url != 'None':
+                    self.stdout.write(f"      ➔ Scanning {platform.title()}...")
                     
-                    # Try to grab the image URL quickly
+                    final_url = self.resolve_deep_link(url)
                     img_url = self.fetch_image_url(final_url, platform)
                     
-                    if img_url:
-                        # If we found an image URL, download it immediately
-                        if self.auto_download_image(product, img_url):
-                            self.stdout.write(self.style.SUCCESS(f"      ✅ Success! Downloaded from {platform.title()}."))
-                            success_count += 1
-                            downloaded = True
-                            break # 🚀 STOP CHECKING! Move to the next product.
-
+                    if img_url and img_url.startswith('http'):
+                        product.image_url = img_url
+                        product.save()
+                        
+                        self.stdout.write(self.style.SUCCESS(f"      ✅ Success! Saved High-Res Link from {platform.title()}."))
+                        success_count += 1
+                        downloaded = True
+                        break 
+                        
             if not downloaded:
-                self.stdout.write(self.style.ERROR(f"      ❌ Failed. Could not find image on any provided links."))
+                self.stdout.write(self.style.ERROR(f"      ❌ Failed. Websites are blocking the bot for this item."))
+
+            time.sleep(2) # Adjusted to 2 seconds
 
         elapsed = time.time() - start_time
         self.stdout.write("\n" + "="*50)
-        self.stdout.write(self.style.SUCCESS(f"🏁 Finished! Fixed {success_count} images in {elapsed:.2f} seconds."))
+        self.stdout.write(self.style.SUCCESS(f"🏁 Finished! Linked {success_count} images in {elapsed:.2f} seconds."))
         self.stdout.write("="*50 + "\n")

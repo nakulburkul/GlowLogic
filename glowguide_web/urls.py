@@ -3,9 +3,14 @@ from django.urls import path
 from shop import views
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path
 
 urlpatterns = [
+    # 1. 🚀 YOUR CUSTOM ADMIN URLS MUST GO FIRST!
+    path('admin/analytics/export/', views.export_affiliate_analytics, name='export_analytics'),
+    path('admin/analytics/', views.admin_analytics, name='admin_analytics'),
+    path('admin/analytics/trigger-scan/', views.trigger_price_analysis_api, name='trigger_scan'),   
+    
+    # 2. THEN THE DEFAULT DJANGO ADMIN!
     path('admin/', admin.site.urls),
     
     # Storefront Root
@@ -24,7 +29,6 @@ urlpatterns = [
     path('wishlist/', views.wishlist_page, name='wishlist'),
     path('wishlist/toggle/<int:product_id>/', views.toggle_wishlist, name='toggle_wishlist'),
     path('live-search/', views.live_search, name='live_search'),
-    path('admin-analytics/', views.admin_analytics, name='admin_analytics'),
     
    # AI Assistant
     path('log-routine/', views.log_routine, name='log_routine'),
@@ -33,7 +37,10 @@ urlpatterns = [
     path('api/analyze-ingredients/', views.analyze_ingredients_api, name='analyze_ingredients_api'),
     path('api/barcode/', views.barcode_lookup, name='barcode_lookup'),
     path('api/chat/', views.chat_bot_api, name='chat_bot_api'),
-    path('buy/<int:product_id>/', views.track_and_redirect, name='track_outbound'),
+    
+    # Affiliate Tracker
+    path('track/<int:product_id>/<str:store>/', views.track_and_redirect, name='track_outbound'),
+    
 ]
 
 if settings.DEBUG:

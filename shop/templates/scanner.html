@@ -4,8 +4,10 @@
 {% block content %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 
 <style>
     .scanner-container { max-width: 1000px; margin: 30px auto; text-align: center; }
@@ -38,34 +40,77 @@
     #canvas-snapshot { display: none; }
     .result-box { display: none; background: white; padding: 20px; border-radius: 15px; text-align: left; margin-top: 20px; border: 1px solid #e2e8f0; }
 
-    /* 🚀 PREMIUM DASHBOARD STYLING */
+    /* 🚀 PREMIUM GLASSMORPHISM DASHBOARD STYLING */
     .hud-container { 
-        position: relative; display: block; width: 100%; 
-        aspect-ratio: 3 / 4; margin: 0 auto; 
-        border-radius: 16px; overflow: hidden;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-        border: 1px solid #edf2f7;
+        position: relative; 
+        display: inline-block;
+        width: 100%; 
+        margin: 0 auto; 
+        border-radius: 20px; 
+        overflow: hidden;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        background: #000;
     }
     
-    #analyzed-face-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    #face-tracker-box { position: absolute; pointer-events: none; z-index: 5; }
+    #analyzed-face-img { 
+        width: 100%; 
+        height: auto; 
+        display: block; 
+    }
+    
+    #face-tracker-box { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
     #hud-overlay-layer { position: relative; width: 100%; height: 100%; }
     
-    .hud-zone { position: absolute; opacity: 0; transition: opacity 0.4s ease; box-shadow: 0 0 15px currentColor inset; animation: pulseHUD 2s infinite alternate; }
-    @keyframes pulseHUD { 0% { transform: scale(0.95); opacity: 0.6; } 100% { transform: scale(1.05); opacity: 1; } }
+    .hud-zone { position: absolute; opacity: 0; transition: opacity 0.4s ease; animation: pulseHUD 1.5s infinite alternate; }
+    @keyframes pulseHUD { 0% { opacity: 0.4; } 100% { opacity: 1; } }
 
-    /* Sleek Clinical Metric Cards */
     .metric-card { 
-        padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; 
-        background: #f8fafc; cursor: pointer; transition: all 0.2s ease; margin-bottom: 10px; 
-    }
-    .metric-card:hover { transform: translateX(5px); border-color: #cbd5e1; }
-    .metric-card.active-metric { 
-        border-color: currentColor; background: white; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateX(8px);
+        padding: 16px 20px; 
+        border-radius: 16px; 
+        border: 1px solid rgba(255,255,255,0.8); 
+        background: rgba(248, 250, 252, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        cursor: pointer; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        margin-bottom: 12px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
     }
     
-    .progress-thin { height: 6px; border-radius: 10px; background-color: #e2e8f0; overflow: hidden; }
+    .metric-card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.9); }
+    .metric-card.active-metric { 
+        background: #ffffff; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
+        transform: scale(1.02);
+        border-left: 5px solid currentColor; 
+    }
+    .progress-thin { height: 6px; border-radius: 10px; background-color: #edf2f7; overflow: hidden; }
+
+    /* 🚀 PREMIUM CINEMATIC LOADER */
+    #cinematic-loader {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        z-index: 99999; display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+    }
+    #cinematic-loader.active { opacity: 1; pointer-events: all; }
+    
+    .face-scanner-anim {
+        width: 140px; height: 140px; border-radius: 50%;
+        border: 3px dashed #2ecc71; animation: spin 5s linear infinite;
+        position: relative; display: flex; justify-content: center; align-items: center;
+    }
+    .face-scanner-anim::before {
+        content: ''; position: absolute; width: 160px; height: 160px; border-radius: 50%;
+        border: 3px solid transparent; border-top-color: #3b82f6; border-bottom-color: #3b82f6;
+        animation: spin 3s linear infinite reverse;
+    }
+    .face-scanner-anim i { font-size: 50px; color: #2ecc71; animation: pulse 2s infinite; }
+    
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes pulse { 0%, 100% { transform: scale(0.9); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } }
 
     @media (max-width: 768px) {
         .scanner-container { margin: 0 auto; padding: 0 10px; }
@@ -85,14 +130,23 @@
         <button id="capture-face-btn" class="btn-glow" style="background: #64748b;" disabled><i class="fas fa-expand me-2"></i> Face Diagnostic</button>
     </div>
 
+    <div class="alert alert-warning alert-dismissible fade show text-start mb-4 shadow-sm" role="alert" style="border-radius: 16px; background: rgba(254, 243, 199, 0.8); border: 1px solid #fcd34d; color: #92400e; backdrop-filter: blur(10px);">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-lightbulb fs-4 me-3 text-warning"></i>
+            <div>
+                <strong>Pro Tip for Clinical Accuracy:</strong> 
+                <span style="font-size: 0.95rem;">For the best biometric results, please use a <b>clean camera lens</b> and stand in a <b>well-lit room</b> (natural daylight facing a window is best). Harsh shadows can artificially affect your score!</span>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="top: 50%; transform: translateY(-50%);"></button>
+    </div>
+
     <div class="camera-box">
         <button id="flip-camera-btn" class="btn btn-dark rounded-circle position-absolute shadow-lg" style="top: 15px; right: 15px; z-index: 15; width: 45px; height: 45px; border: 2px solid rgba(255,255,255,0.2);">
             <i class="fas fa-sync-alt text-white"></i>
         </button>
         <video id="live-video" autoplay playsinline></video>
-        
         <canvas id="live-detection-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 10;"></canvas>
-        
         <div id="barcode-reader" style="width: 100%; height: 100%; display: none;"></div>
         <div class="scan-line" id="scanLine"></div>
         <p id="loading-text">Initializing AI Vision Models...</p>
@@ -101,29 +155,21 @@
     <canvas id="canvas-snapshot"></canvas>
 
     <div id="skin-report-card" style="display: none; max-width: 950px; margin: 0 auto 40px;">
-        
         <div id="capture-area" style="background: white; padding: 30px; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.06); text-align: left; border: 1px solid #f1f5f9;">
-            
             <div class="d-flex justify-content-between align-items-end mb-4 border-bottom pb-3">
                 <div>
                     <h3 style="font-family: 'Playfair Display', serif; font-weight: 800; color: #1a202c; margin: 0;">Clinical Skin Analysis</h3>
                     <p class="text-muted small mb-0 mt-1"><i class="fas fa-microchip text-primary me-1"></i> Powered by GlowLogic AI Vision</p>
                 </div>
-                <div class="text-end d-none d-md-block">
-                    <span class="badge bg-dark rounded-pill mb-1 fw-bold text-uppercase" style="letter-spacing: 1px;">ID: #GL-{% now "U" %}</span>
-                    <p class="text-muted small mb-0 fw-bold">{% now "F j, Y" %}</p>
-                </div>
             </div>
 
             <div class="row g-4 g-lg-5 align-items-start">
-                
                 <div class="col-md-5 text-center">
-                    <div class="hud-container bg-light">
-                        <img id="analyzed-face-img" src="" alt="Analyzed Face" style="display: none;" crossorigin="anonymous">
+                    <div class="hud-container">
+                        <img id="analyzed-face-img" src="" alt="Analyzed Face" crossorigin="anonymous">
                         <div id="face-tracker-box">
                             <div id="hud-overlay-layer"></div>
                         </div>
-                        
                         <div class="position-absolute bottom-0 start-0 w-100 p-2 text-center" style="background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); z-index: 10;">
                             <span class="text-white fw-bold d-block" style="font-size: 0.7rem; letter-spacing: 1.5px;"><i class="fas fa-crosshairs text-success me-1"></i> BIOMETRIC MAP ACTIVE</span>
                         </div>
@@ -131,7 +177,6 @@
                 </div>
 
                 <div class="col-md-7">
-                    
                     <div class="bg-light p-3 rounded-4 mb-4 border" style="background: linear-gradient(145deg, #f8fafc, #f1f5f9);">
                         <div class="row text-center align-items-center">
                             <div class="col-5 border-end border-2">
@@ -149,7 +194,7 @@
 
                     <div class="metric-card active-metric" style="color: #3b82f6;" onclick="switchHUD('hydration', this)">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">Hydration Levels</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Hydration Levels</span>
                             <span id="rep-hyd-val" class="fw-bold badge bg-primary-subtle text-primary rounded-pill">0%</span>
                         </div>
                         <div class="progress progress-thin">
@@ -159,7 +204,7 @@
 
                     <div class="metric-card" style="color: #f59e0b;" onclick="switchHUD('oil', this)">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">Sebum (Oil) Production</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Sebum (Oil) Production</span>
                             <span id="rep-oil-val" class="fw-bold badge bg-warning-subtle text-warning rounded-pill">0%</span>
                         </div>
                         <div class="progress progress-thin">
@@ -169,7 +214,7 @@
 
                     <div class="metric-card" style="color: #ef4444;" onclick="switchHUD('redness', this)">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">Redness & Sensitivity</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Redness & Sensitivity</span>
                             <span id="rep-red-val" class="fw-bold badge bg-danger-subtle text-danger rounded-pill">0%</span>
                         </div>
                         <div class="progress progress-thin">
@@ -177,9 +222,19 @@
                         </div>
                     </div>
 
+                    <div class="metric-card" style="color: #f43f5e;" onclick="switchHUD('acne', this)">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Acne & Blemishes</span>
+                            <span id="rep-acne-val" class="fw-bold badge rounded-pill" style="background: #ffe4e6; color: #f43f5e;">--%</span>
+                        </div>
+                        <div class="progress progress-thin">
+                            <div id="rep-acne-bar" class="progress-bar progress-bar-animated" style="background-color: #f43f5e; width: 0%; transition: width 1.5s ease-in-out;"></div>
+                        </div>
+                    </div>
+
                     <div class="metric-card" style="color: #8b5cf6;" onclick="switchHUD('pigment', this)">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">Pigmentation Map</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Pigmentation Map</span>
                             <span id="rep-pigment-val" class="fw-bold badge rounded-pill" style="background: #ede9fe; color: #8b5cf6;">0%</span>
                         </div>
                         <div class="progress progress-thin">
@@ -189,7 +244,7 @@
 
                     <div class="metric-card" style="color: #10b981;" onclick="switchHUD('pores', this)">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">Pore Visibility</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Pore Visibility</span>
                             <span id="rep-pore-val" class="fw-bold badge rounded-pill" style="background: #d1fae5; color: #10b981;">0%</span>
                         </div>
                         <div class="progress progress-thin">
@@ -197,13 +252,43 @@
                         </div>
                     </div>
 
-                    <div class="metric-card mb-0" style="color: #ec4899;" onclick="switchHUD('aging', this)">
+                    <div class="metric-card" style="color: #ec4899;" onclick="switchHUD('aging', this)">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">Fine Lines / Elasticity</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Fine Lines / Elasticity</span>
                             <span id="rep-aging-val" class="fw-bold badge rounded-pill" style="background: #fce7f3; color: #ec4899;">0%</span>
                         </div>
                         <div class="progress progress-thin">
                             <div id="rep-aging-bar" class="progress-bar progress-bar-animated" style="background-color: #ec4899; width: 0%; transition: width 1.5s ease-in-out;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" style="color: #9d174d;" onclick="switchHUD('deep_wrinkles', this)">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Deep Wrinkle Depth</span>
+                            <span id="rep-deep-val" class="fw-bold badge rounded-pill" style="background: #fce7f3; color: #9d174d;">0%</span>
+                        </div>
+                        <div class="progress progress-thin">
+                            <div id="rep-deep-bar" class="progress-bar progress-bar-animated" style="background-color: #9d174d; width: 0%; transition: width 1.5s ease-in-out;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card" style="color: #6366f1;" onclick="switchHUD('dark_circles', this)">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Fatigue / Dark Circles</span>
+                            <span id="rep-dark-val" class="fw-bold badge rounded-pill" style="background: #e0e7ff; color: #6366f1;">0%</span>
+                        </div>
+                        <div class="progress progress-thin">
+                            <div id="rep-dark-bar" class="progress-bar progress-bar-animated" style="background-color: #6366f1; width: 0%; transition: width 1.5s ease-in-out;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card mb-0" style="color: #f59e0b;" onclick="switchHUD('glow', this)">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Overall Glow & Radiance</span>
+                            <span id="rep-glow-val" class="fw-bold badge rounded-pill" style="background: #fef3c7; color: #f59e0b;">0%</span>
+                        </div>
+                        <div class="progress progress-thin">
+                            <div id="rep-glow-bar" class="progress-bar progress-bar-animated" style="background-color: #f59e0b; width: 0%; transition: width 1.5s ease-in-out;"></div>
                         </div>
                     </div>
 
@@ -212,54 +297,110 @@
         </div>
 
         <div class="d-flex flex-column flex-md-row gap-3 mt-4" id="report-action-buttons">
-            <button onclick="downloadReport()" class="btn btn-outline-dark py-3 px-4 rounded-pill fw-bold fs-6 shadow-sm" title="Save Official PDF">
+            <button onclick="downloadDiagnosticCard()" class="btn btn-outline-dark py-3 px-4 rounded-pill fw-bold fs-6 shadow-sm">
                 <i class="fas fa-download me-2"></i> Save Report
             </button>
-            <a id="view-routine-btn" href="#" class="btn btn-dark flex-grow-1 py-3 rounded-pill fw-bold fs-5 shadow-sm" style="transition: 0.3s; background: linear-gradient(45deg, #1a202c, #2d3748);">
+            <a id="view-routine-btn" href="#" class="btn btn-dark flex-grow-1 py-3 rounded-pill fw-bold fs-5 shadow-sm">
                 Generate Curated Routine <i class="fas fa-magic ms-2 text-warning"></i>
             </a>
         </div>
     </div>
-
-    <div id="external-product-card" style="display: none; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.05); text-align: left; margin-bottom: 30px;">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-            <span class="badge bg-secondary-subtle text-secondary rounded-pill">Not in GlowGuide Store</span>
-            <i class="fas fa-globe text-muted"></i>
-        </div>
-        <div class="text-center mb-4">
-            <img id="ext-img" src="" style="max-width: 100%; height: 200px; object-fit: contain; display: none; mix-blend-mode: multiply;">
-        </div>
-        <h6 id="ext-brand" class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.85rem; letter-spacing: 1px;">--</h6>
-        <h4 id="ext-name" class="fw-bold mb-3" style="font-family: 'Playfair Display', serif; color: #1a202c;">--</h4>
-        <p class="fw-bold mb-1" style="font-size: 0.9rem;"><i class="fas fa-flask text-success me-2"></i> Ingredient List:</p>
-        <div class="p-3 bg-light rounded-3 mb-4">
-            <p id="ext-ingredients" class="text-muted small mb-0" style="max-height: 120px; overflow-y: auto; line-height: 1.6;">--</p>
-        </div>
-        <button onclick="window.location.reload()" class="btn btn-outline-dark w-100 py-2 rounded-pill fw-bold">Scan Another Item</button>
-    </div>
     
-    <div id="ingredient-results" class="result-box">
-        <h5 class="fw-bold"><i class="fas fa-flask text-success me-2"></i> AI Analysis:</h5>
-        <div id="ai-text-response" style="line-height: 1.6; font-size: 0.95rem;"></div>
+    <div id="cinematic-loader">
+        <div class="face-scanner-anim">
+            <i class="fas fa-fingerprint" style="animation: none; transform: rotate(0deg);"></i>
+        </div>
+        <h2 class="text-white mt-5 fw-bold" style="font-family: 'Playfair Display', serif; letter-spacing: 1px;">Processing Biometrics</h2>
+        <div style="height: 40px; display: flex; align-items: center; margin-top: 10px;">
+            <p id="cinematic-loader-text" class="text-success fw-bold fs-5 mb-0" style="letter-spacing: 0.5px;">Initializing Engine...</p>
+        </div>
     </div>
+
+    <div style="position: absolute; left: -9999px; top: 0; pointer-events: none; opacity: 0;">
+        <div id="diagnostic-export-template" style="width: 1080px; background: #0f172a; padding: 80px; box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif;">
+            <div style="text-align: center; border-bottom: 2px solid #334155; padding-bottom: 40px; margin-bottom: 50px;">
+                <h1 style="color: white; font-size: 70px; margin: 0; font-family: 'Playfair Display', serif;">✨ GlowLogic</h1>
+                <p style="color: #3b82f6; font-size: 26px; letter-spacing: 4px; text-transform: uppercase; margin: 15px 0 0; font-weight: bold;">Clinical Skin Diagnostic</p>
+            </div>
+
+            <div style="display: flex; gap: 50px; margin-bottom: 50px;">
+                <img id="export-face-img" src="" style="width: 450px; height: 500px; object-fit: cover; border-radius: 30px; border: 4px solid #1e293b;" crossorigin="anonymous">
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="background: #1e293b; padding: 40px; border-radius: 20px; margin-bottom: 30px;">
+                        <p style="color: #94a3b8; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">Primary Profile</p>
+                        <h2 id="export-rep-type" style="color: #2ecc71; font-size: 55px; margin: 0; font-family: 'Playfair Display', serif;">--</h2>
+                    </div>
+                    <div style="background: #1e293b; padding: 40px; border-radius: 20px;">
+                        <p style="color: #94a3b8; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">Target Concerns</p>
+                        <h2 id="export-rep-concern" style="color: white; font-size: 35px; margin: 0; line-height: 1.3;">--</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #1e293b; border-radius: 30px; padding: 50px;">
+                <h3 style="color: white; font-size: 35px; margin: 0 0 40px 0; border-bottom: 2px solid #334155; padding-bottom: 20px;">Core Biomarkers</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px 60px;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;"><span style="color: white; font-size: 26px; font-weight: bold;">Hydration</span><span id="exp-val-hyd" style="color: #60a5fa; font-size: 26px; font-weight: bold;">0%</span></div>
+                        <div style="background: #334155; height: 16px; border-radius: 10px; overflow: hidden;"><div id="exp-bar-hyd" style="background: #60a5fa; height: 100%; width: 0%;"></div></div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;"><span style="color: white; font-size: 26px; font-weight: bold;">Redness</span><span id="exp-val-red" style="color: #ef4444; font-size: 26px; font-weight: bold;">0%</span></div>
+                        <div style="background: #334155; height: 16px; border-radius: 10px; overflow: hidden;"><div id="exp-bar-red" style="background: #ef4444; height: 100%; width: 0%;"></div></div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;"><span style="color: white; font-size: 26px; font-weight: bold;">Acne & Blemishes</span><span id="exp-val-acne" style="color: #f43f5e; font-size: 26px; font-weight: bold;">0%</span></div>
+                        <div style="background: #334155; height: 16px; border-radius: 10px; overflow: hidden;"><div id="exp-bar-acne" style="background: #f43f5e; height: 100%; width: 0%;"></div></div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;"><span style="color: white; font-size: 26px; font-weight: bold;">Overall Glow</span><span id="exp-val-glow" style="color: #fbbf24; font-size: 26px; font-weight: bold;">0%</span></div>
+                        <div style="background: #334155; height: 16px; border-radius: 10px; overflow: hidden;"><div id="exp-bar-glow" style="background: #fbbf24; height: 100%; width: 0%;"></div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 60px;">
+                <p style="color: #64748b; font-size: 24px;">Generated by <b>GlowLogic AI Vision</b> • glowlogic.com</p>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
+    let genuineBiometricData = null; 
+
     const video = document.getElementById('live-video');
     const canvas = document.getElementById('canvas-snapshot');
     const liveOverlayCanvas = document.getElementById('live-detection-overlay'); 
+    const canvasCtx = liveOverlayCanvas.getContext('2d');
+    
     const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
     const scanTextBtn = document.getElementById('scan-text-btn');
     const captureFaceBtn = document.getElementById('capture-face-btn');
     const scanLine = document.getElementById('scanLine');
     const loadingText = document.getElementById('loading-text');
-    const resultBox = document.getElementById('ingredient-results');
-    const aiTextResponse = document.getElementById('ai-text-response');
     const flipCameraBtn = document.getElementById('flip-camera-btn');
 
-    let currentFacingMode = "environment"; 
+    let currentFacingMode = "user"; // 🚀 Default to front camera for mobile!
     let currentStream = null;
-    let bouncerInterval = null;
+    let faceMesh;
+    let scanAnimationFrame;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 
     async function startCamera(facingMode) {
         if (currentStream) currentStream.getTracks().forEach(track => track.stop());
@@ -282,69 +423,193 @@
         startCamera(currentFacingMode);
     });
 
-    startCamera(currentFacingMode);
+    // ==========================================
+    // 🚀 ULTRA-SENSITIVE AI ENGINE
+    // ==========================================
+    async function initializeAI() {
+        loadingText.innerHTML = '<i class="fas fa-microchip me-2"></i> Loading AI Brain...';
+        
+        try {
+            faceMesh = new FaceMesh({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+            }});
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.2, // 🚀 Dropped to 20% so it locks on instantly!
+                minTrackingConfidence: 0.2
+            });
+
+            faceMesh.onResults(onFaceResults);
+            
+            await faceMesh.initialize();
+            console.log("AI Brain Loaded Successfully");
+            loadingText.innerHTML = '<i class="fas fa-camera me-2"></i> System Ready.';
+            
+            startCamera(currentFacingMode);
+        } catch (e) {
+            console.error("AI Load Failed:", e);
+            loadingText.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> AI failed to load. Refresh page.';
+            loadingText.style.color = "#ff6b6b";
+        }
+    }
+
+    function onFaceResults(results) {
+        if(document.getElementById('action-buttons').style.display === 'none') return;
+        if(video.style.display === 'none') return;
+
+        // Ensure canvas matches video dimensions exactly
+        liveOverlayCanvas.width = video.videoWidth;
+        liveOverlayCanvas.height = video.videoHeight;
+        
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, liveOverlayCanvas.width, liveOverlayCanvas.height);
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            const landmarks = results.multiFaceLandmarks[0];
+            
+            const w = liveOverlayCanvas.width;
+            const h = liveOverlayCanvas.height;
+            
+            const top = landmarks[10];      // High Forehead
+            const bottom = landmarks[152];  // Chin
+            const left = landmarks[234];    // Left Cheek Edge
+            const right = landmarks[454];   // Right Cheek Edge
+
+            // 🚀 REMOVED ALL STRICT CENTERING RULES. 
+            loadingText.innerHTML = '<i class="fas fa-check-circle me-2"></i> Target Acquired! Tap Capture.';
+            loadingText.style.color = "#1dd1a1";
+            captureFaceBtn.disabled = false; 
+
+            // DRAW DYNAMIC BIOMETRIC RETICLE
+            canvasCtx.strokeStyle = 'rgba(46, 204, 113, 0.9)';
+            canvasCtx.lineWidth = 4;
+            canvasCtx.lineCap = 'round';
+            canvasCtx.lineJoin = 'round';
+            canvasCtx.shadowColor = 'rgba(46, 204, 113, 0.8)';
+            canvasCtx.shadowBlur = 12;
+
+            const bSize = Math.max(30, w * 0.08); // Made brackets slightly bigger for mobile
+
+            canvasCtx.beginPath(); canvasCtx.moveTo(left.x * w + bSize, top.y * h); canvasCtx.lineTo(left.x * w, top.y * h); canvasCtx.lineTo(left.x * w, top.y * h + bSize); canvasCtx.stroke();
+            canvasCtx.beginPath(); canvasCtx.moveTo(right.x * w - bSize, top.y * h); canvasCtx.lineTo(right.x * w, top.y * h); canvasCtx.lineTo(right.x * w, top.y * h + bSize); canvasCtx.stroke();
+            canvasCtx.beginPath(); canvasCtx.moveTo(left.x * w, bottom.y * h - bSize); canvasCtx.lineTo(left.x * w, bottom.y * h); canvasCtx.lineTo(left.x * w + bSize, bottom.y * h); canvasCtx.stroke();
+            canvasCtx.beginPath(); canvasCtx.moveTo(right.x * w, bottom.y * h - bSize); canvasCtx.lineTo(right.x * w, bottom.y * h); canvasCtx.lineTo(right.x * w - bSize, bottom.y * h); canvasCtx.stroke();
+            
+            canvasCtx.fillStyle = 'rgba(46, 204, 113, 0.9)';
+            canvasCtx.beginPath(); canvasCtx.arc((top.x * w), (top.y * h) - 15, 6, 0, 2 * Math.PI); canvasCtx.fill();
+            
+        } else {
+            loadingText.innerHTML = '<i class="fas fa-user-slash me-2"></i> Move camera closer to face...';
+            loadingText.style.color = "#f8f9fa";
+            captureFaceBtn.disabled = true;
+        }
+        canvasCtx.restore();
+    }
+
+    video.addEventListener('play', () => {
+        if (scanAnimationFrame) cancelAnimationFrame(scanAnimationFrame);
+        
+        async function detectFace3D() {
+            if (document.hidden) {
+                scanAnimationFrame = requestAnimationFrame(detectFace3D);
+                return;
+            }
+            
+            // 🚀 CRITICAL MOBILE FIX: Do not send frames until the mobile camera fully wakes up
+            if(document.getElementById('action-buttons').style.display !== 'none' && video.style.display !== 'none' && video.readyState >= 2 && video.videoWidth > 0) {
+                try {
+                    await faceMesh.send({image: video});
+                } catch(e) {
+                    console.log("Waiting for clear frame...");
                 }
             }
+            scanAnimationFrame = requestAnimationFrame(detectFace3D);
         }
-        return cookieValue;
-    }
+        detectFace3D();
+    });
 
-    function formatMarkdown(text) {
-        if (!text) return "";
-        let html = text;
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a202c;">$1</strong>');
-        html = html.replace(/(?:\r\n|\r|\n)\* (.*)/g, '<br><div style="margin-left: 10px; border-left: 2px solid #2ecc71; padding-left: 10px; margin-bottom: 5px;">$1</div>');
-        html = html.replace(/\n/g, '<br>');
-        return html;
-    }
-
-    // 🚀 HUD GENERATOR
     function switchHUD(metricType, clickedElement) {
         document.querySelectorAll('.metric-card').forEach(el => el.classList.remove('active-metric'));
         clickedElement.classList.add('active-metric');
 
         const layer = document.getElementById('hud-overlay-layer');
+        if (!layer) return; 
+        
+        const cx = (genuineBiometricData && genuineBiometricData.center_x) ? genuineBiometricData.center_x : 50;
+        const cy = (genuineBiometricData && genuineBiometricData.center_y) ? genuineBiometricData.center_y : 50;
+        const fw = (genuineBiometricData && genuineBiometricData.face_w) ? genuineBiometricData.face_w : 70;
+        const fh = (genuineBiometricData && genuineBiometricData.face_h) ? genuineBiometricData.face_h : 70;
+
         let html = '';
 
         if (metricType === 'hydration') {
             html = `
-                <div class="hud-zone" style="top:52%; left:32%; width:13%; height:12%; border-radius:50%; border:3px solid #3b82f6; background:rgba(59,130,246,0.2);"></div>
-                <div class="hud-zone" style="top:52%; left:55%; width:13%; height:12%; border-radius:50%; border:3px solid #3b82f6; background:rgba(59,130,246,0.2);"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.25}%; left: ${cx}%; width: ${fw*0.6}%; height: ${fh*0.15}%; transform: translate(-50%, -50%); border-radius: 40px; background: radial-gradient(ellipse, rgba(59,130,246,0.6) 0%, rgba(59,130,246,0) 70%);"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.15}%; left: ${cx - fw*0.25}%; width: ${fw*0.35}%; height: ${fh*0.3}%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(59,130,246,0.6) 0%, rgba(59,130,246,0) 70%);"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.15}%; left: ${cx + fw*0.25}%; width: ${fw*0.35}%; height: ${fh*0.3}%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(59,130,246,0.6) 0%, rgba(59,130,246,0) 70%);"></div>
             `;
-        } else if (metricType === 'oil') {
+        } 
+        else if (metricType === 'oil') {
             html = `
-                <div class="hud-zone" style="top:32%; left:35%; width:30%; height:8%; border-radius:30px; border:2px dashed #f59e0b; background:rgba(245,158,11,0.2);"></div>
-                <div class="hud-zone" style="top:40%; left:45%; width:10%; height:18%; border-radius:20px; border:2px dashed #f59e0b; background:rgba(245,158,11,0.2);"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.30}%; left: ${cx}%; width: ${fw*0.65}%; height: ${fh*0.12}%; transform: translate(-50%, -50%); border-radius: 15px 15px 0 0; background: rgba(245,158,11,0.35); box-shadow: 0 0 20px rgba(245,158,11,0.5); border: 2px solid rgba(253, 230, 138, 0.8); border-bottom: none;"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.02}%; left: ${cx}%; width: ${fw*0.18}%; height: ${fh*0.45}%; transform: translate(-50%, -50%); border-radius: 0 0 20px 20px; background: rgba(245,158,11,0.35); box-shadow: 0 0 20px rgba(245,158,11,0.5); border: 2px solid rgba(253, 230, 138, 0.8); border-top: none;"></div>
             `;
-        } else if (metricType === 'redness') {
+        } 
+        else if (metricType === 'redness') {
             html = `
-                <div class="hud-zone" style="top:48%; left:38%; width:24%; height:12%; border-radius:50%; background:radial-gradient(circle, rgba(239,68,68,0.5) 0%, rgba(239,68,68,0) 70%); border:none;"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.15}%; left: ${cx - fw*0.25}%; width: ${fw*0.35}%; height: ${fh*0.35}%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(239,68,68,0.5) 0%, rgba(239,68,68,0) 70%);"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.15}%; left: ${cx + fw*0.25}%; width: ${fw*0.35}%; height: ${fh*0.35}%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(239,68,68,0.5) 0%, rgba(239,68,68,0) 70%);"></div>
             `;
-        } else if (metricType === 'pigment') {
+        }
+        else if (metricType === 'pores') {
             html = `
-                <div class="hud-zone" style="top:50%; left:30%; width:8%; height:8%; border-radius:50%; border:2px dotted #8b5cf6; background:rgba(139,92,246,0.3);"></div>
-                <div class="hud-zone" style="top:50%; left:62%; width:8%; height:8%; border-radius:50%; border:2px dotted #8b5cf6; background:rgba(139,92,246,0.3);"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.05}%; left: ${cx - fw*0.18}%; width: ${fw*0.16}%; height: ${fh*0.2}%; transform: translate(-50%, -50%); border-radius: 20px; border: 2px solid #10b981; background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(16,185,129,0.2) 4px, rgba(16,185,129,0.2) 8px);"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.05}%; left: ${cx + fw*0.18}%; width: ${fw*0.16}%; height: ${fh*0.2}%; transform: translate(-50%, -50%); border-radius: 20px; border: 2px solid #10b981; background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(16,185,129,0.2) 4px, rgba(16,185,129,0.2) 8px);"></div>
             `;
-        } else if (metricType === 'pores') {
+        } 
+        else if (metricType === 'aging') {
             html = `
-                <div class="hud-zone" style="top:50%; left:42%; width:16%; height:10%; border-radius:20px; border:2px solid #10b981; background: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(16,185,129,0.2) 5px, rgba(16,185,129,0.2) 10px);"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.35}%; left: ${cx}%; width: ${fw*0.5}%; height: 5%; transform: translate(-50%, -50%); border-bottom: 2px solid #ec4899; border-radius: 50%;"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.12}%; left: ${cx - fw*0.35}%; width: ${fw*0.15}%; height: ${fh*0.1}%; transform: translate(-50%, -50%) rotate(-25deg); border-top: 2px solid #ec4899; border-radius: 50%;"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.12}%; left: ${cx + fw*0.35}%; width: ${fw*0.15}%; height: ${fh*0.1}%; transform: translate(-50%, -50%) rotate(25deg); border-top: 2px solid #ec4899; border-radius: 50%;"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.25}%; left: ${cx - fw*0.2}%; width: ${fw*0.12}%; height: ${fh*0.15}%; transform: translate(-50%, -50%) rotate(-15deg); border-left: 2px solid #ec4899; border-radius: 50%;"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.25}%; left: ${cx + fw*0.2}%; width: ${fw*0.12}%; height: ${fh*0.15}%; transform: translate(-50%, -50%) rotate(15deg); border-right: 2px solid #ec4899; border-radius: 50%;"></div>
             `;
-        } else if (metricType === 'aging') {
+        }
+        else if (metricType === 'deep_wrinkles') {
             html = `
-                <div class="hud-zone" style="top:30%; left:35%; width:30%; height:4%; border-top:3px solid #ec4899; border-radius:50%; background:transparent; box-shadow:none;"></div>
-                <div class="hud-zone" style="top:44%; left:32%; width:12%; height:4%; border-bottom:3px solid #ec4899; border-radius:50%; background:transparent; box-shadow:none;"></div>
-                <div class="hud-zone" style="top:44%; left:56%; width:12%; height:4%; border-bottom:3px solid #ec4899; border-radius:50%; background:transparent; box-shadow:none;"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.35}%; left: ${cx}%; width: ${fw*0.45}%; height: 5%; transform: translate(-50%, -50%); border-bottom: 4px solid #9d174d; border-radius: 50%;"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.25}%; left: ${cx - fw*0.2}%; width: ${fw*0.12}%; height: ${fh*0.15}%; transform: translate(-50%, -50%) rotate(-15deg); border-left: 4px solid #9d174d; border-radius: 50%;"></div>
+                <div class="hud-zone" style="top: ${cy + fh*0.25}%; left: ${cx + fw*0.2}%; width: ${fw*0.12}%; height: ${fh*0.15}%; transform: translate(-50%, -50%) rotate(15deg); border-right: 4px solid #9d174d; border-radius: 50%;"></div>
             `;
+        }
+        else if (metricType === 'glow') {
+            html = `
+                <div class="hud-zone" style="top: ${cy}%; left: ${cx}%; width: ${fw*0.8}%; height: ${fh*0.8}%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(245,158,11,0.2) 0%, rgba(245,158,11,0) 70%); box-shadow: 0 0 50px rgba(245,158,11,0.2);"></div>
+            `;
+        }
+        else if (metricType === 'dark_circles') {
+            html = `
+                <div class="hud-zone" style="top: ${cy - fh*0.02}%; left: ${cx - fw*0.20}%; width: ${fw*0.25}%; height: ${fh*0.10}%; transform: translate(-50%, -50%); border-radius: 50%; border-bottom: 4px solid rgba(99,102,241,0.7); background: radial-gradient(ellipse, rgba(99,102,241,0.3) 0%, rgba(99,102,241,0) 70%);"></div>
+                <div class="hud-zone" style="top: ${cy - fh*0.02}%; left: ${cx + fw*0.20}%; width: ${fw*0.25}%; height: ${fh*0.10}%; transform: translate(-50%, -50%); border-radius: 50%; border-bottom: 4px solid rgba(99,102,241,0.7); background: radial-gradient(ellipse, rgba(99,102,241,0.3) 0%, rgba(99,102,241,0) 70%);"></div>
+            `;
+        }
+        else if (metricType === 'acne' || metricType === 'pigment') {
+            let spots = (metricType === 'acne') ? genuineBiometricData?.acne : genuineBiometricData?.pigment;
+            let color = (metricType === 'acne') ? '244,63,94' : '139,92,246';
+            let styleStr = (metricType === 'acne') 
+                ? `background: radial-gradient(circle, rgba(${color},0.85) 0%, rgba(${color},0) 70%); box-shadow: 0 0 10px rgba(${color},0.5);`
+                : `border: 3px dashed rgb(${color}); background: rgba(${color},0.2);`;
+                
+            if (spots && spots.length > 0) {
+                spots.forEach((pt, i) => {
+                    html += `<div class="hud-zone" style="top: ${pt.y}%; left: ${pt.x}%; width: ${fw*0.12}%; height: ${fh*0.12}%; transform: translate(-50%, -50%); border-radius: 50%; ${styleStr} animation-delay: 0.${i}s;"></div>`;
+                });
+            } else {
+                html = `<div style="position:absolute; top:50%; left: 50%; transform: translate(-50%, -50%); padding: 10px 20px; background: rgba(0,0,0,0.6); border-radius: 30px; color:#fff; font-weight:bold; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; backdrop-filter: blur(5px);"><i class="fas fa-check-circle text-success me-2"></i> Target Clear</div>`;
+            }
         }
 
         layer.innerHTML = html;
@@ -352,239 +617,32 @@
         setTimeout(() => layer.style.opacity = '1', 50);
     }
 
-    function downloadReport() {
-        const captureArea = document.getElementById('capture-area');
-        
-        // Brief visual tweak for a cleaner print
-        document.querySelectorAll('.hud-zone').forEach(el => el.style.animation = 'none');
-
-        html2canvas(captureArea, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = 'GlowGuide-Diagnostic-Report.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            document.querySelectorAll('.hud-zone').forEach(el => el.style.animation = 'pulseHUD 2s infinite alternate');
-        });
-    }
-
-    Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
-    ]).then(() => {
-        video.addEventListener('play', () => {
-            if (bouncerInterval) clearInterval(bouncerInterval);
-            const tempCanvas = document.createElement('canvas');
-            const context = tempCanvas.getContext('2d');
-
-            bouncerInterval = setInterval(async () => {
-                if(document.getElementById('action-buttons').style.display === 'none') return;
-                if(video.style.display === 'none') return; 
-                
-                const overlayCtx = liveOverlayCanvas.getContext('2d');
-                overlayCtx.clearRect(0, 0, liveOverlayCanvas.width, liveOverlayCanvas.height);
-
-                const scaleDown = 0.1; 
-                tempCanvas.width = video.videoWidth * scaleDown;
-                tempCanvas.height = video.videoHeight * scaleDown;
-                context.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-                
-                let imageData = context.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
-                let brightness = 0;
-                let pixelCount = 0;
-                
-                for (let i = 0; i < imageData.length; i += 16) {
-                    brightness += (0.299 * imageData[i] + 0.587 * imageData[i+1] + 0.114 * imageData[i+2]);
-                    pixelCount++;
-                }
-                brightness = brightness / pixelCount;
-
-                if (brightness < 60) {
-                    loadingText.innerHTML = '<i class="fas fa-lightbulb me-2"></i> Too dark! Face a window or turn on a light.';
-                    loadingText.style.color = "#feca57";
-                    captureFaceBtn.disabled = true;
-                    return; 
-                }
-
-                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.5 }));
-                
-                const displaySize = { width: video.videoWidth, height: video.videoHeight };
-                faceapi.matchDimensions(liveOverlayCanvas, displaySize);
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
-                if (detections.length === 0) {
-                    loadingText.innerHTML = '<i class="fas fa-user-slash me-2"></i> No face detected. Look at the camera.';
-                    loadingText.style.color = "#f8f9fa";
-                    captureFaceBtn.disabled = true;
-                } else if (detections.length > 1) {
-                    loadingText.innerHTML = '<i class="fas fa-users me-2"></i> Multiple faces detected! Just you, please.';
-                    loadingText.style.color = "#ff6b6b";
-                    captureFaceBtn.disabled = true;
-
-                    resizedDetections.forEach(det => {
-                        const box = det.box;
-                        overlayCtx.strokeStyle = '#e74c3c';
-                        overlayCtx.lineWidth = 3;
-                        overlayCtx.strokeRect(box.x, box.y, box.width, box.height);
-                    });
-                } else {
-                    const box = detections[0].box;
-                    const minDimension = Math.min(video.videoWidth, video.videoHeight);
-                    const faceScale = box.width / minDimension; 
-
-                    const faceCenterX = box.x + (box.width / 2);
-                    const isCentered = (faceCenterX > video.videoWidth * 0.3) && (faceCenterX < video.videoWidth * 0.7);
-
-                    const targetBox = resizedDetections[0].box;
-
-                    if (!isCentered) {
-                        loadingText.innerHTML = '<i class="fas fa-arrows-alt-h me-2"></i> Center your face in the frame.';
-                        loadingText.style.color = "#feca57";
-                        captureFaceBtn.disabled = true;
-                        overlayCtx.strokeStyle = '#f1c40f';
-                        overlayCtx.lineWidth = 3;
-                        overlayCtx.strokeRect(targetBox.x, targetBox.y, targetBox.width, targetBox.height);
-                    } else if (faceScale < 0.35) { 
-                        loadingText.innerHTML = '<i class="fas fa-search-plus me-2"></i> Move closer...';
-                        loadingText.style.color = "#feca57";
-                        captureFaceBtn.disabled = true;
-                        overlayCtx.strokeStyle = '#f1c40f';
-                        overlayCtx.lineWidth = 3;
-                        overlayCtx.strokeRect(targetBox.x, targetBox.y, targetBox.width, targetBox.height);
-                    } else if (faceScale > 0.65) { 
-                        loadingText.innerHTML = '<i class="fas fa-search-minus me-2"></i> Too close! Move back a bit.';
-                        loadingText.style.color = "#ff6b6b";
-                        captureFaceBtn.disabled = true;
-                        overlayCtx.strokeStyle = '#e74c3c';
-                        overlayCtx.lineWidth = 3;
-                        overlayCtx.strokeRect(targetBox.x, targetBox.y, targetBox.width, targetBox.height);
-                    } else {
-                        loadingText.innerHTML = '<i class="fas fa-check-circle me-2"></i> Perfect! Hold still and capture.';
-                        loadingText.style.color = "#1dd1a1";
-                        captureFaceBtn.disabled = false; 
-
-                        overlayCtx.strokeStyle = '#2ecc71';
-                        overlayCtx.lineWidth = 4;
-                        overlayCtx.lineJoin = 'round';
-                        overlayCtx.strokeRect(targetBox.x, targetBox.y, targetBox.width, targetBox.height);
-
-                        overlayCtx.fillStyle = 'rgba(46, 204, 113, 0.15)';
-                        overlayCtx.fillRect(targetBox.x, targetBox.y, targetBox.width, targetBox.height);
-                    }
-                }
-            }, 150); 
-        });
-    });
-
-    scanBarcodeBtn.addEventListener('click', () => { 
-        if (currentStream) currentStream.getTracks().forEach(track => track.stop());
-        video.style.display = 'none';
-        if (liveOverlayCanvas) liveOverlayCanvas.style.display = 'none'; 
-        flipCameraBtn.style.display = 'none';
-        document.getElementById('barcode-reader').style.display = 'block';
-        scanLine.style.display = 'block';
-        document.getElementById('action-buttons').style.display = 'none';
-        loadingText.innerHTML = '<i class="fas fa-barcode me-2"></i> Scanning Barcode...';
-        loadingText.style.color = "#54a0ff";
-        resultBox.style.display = 'none';
-
-        const html5QrCode = new Html5Qrcode("barcode-reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, 
-            (decodedText) => {
-                html5QrCode.stop(); 
-                loadingText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Fetching product details...';
-                fetch('/api/barcode/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-                    body: JSON.stringify({ barcode: decodedText })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') { window.location.href = data.product_url; } 
-                    else if (data.status === 'external_found') {
-                        document.querySelector('.camera-box').style.display = 'none';
-                        document.getElementById('external-product-card').style.display = 'block';
-                        document.getElementById('ext-name').innerText = data.product.name;
-                        document.getElementById('ext-brand').innerText = data.product.brand;
-                        if (data.product.ingredients) document.getElementById('ext-ingredients').innerText = data.product.ingredients;
-                        if (data.product.image_url) {
-                            const imgElement = document.getElementById('ext-img');
-                            imgElement.src = data.product.image_url;
-                            imgElement.style.display = 'inline-block';
-                        }
-                    } else {
-                        alert("We couldn't find any information on this specific barcode!");
-                        window.location.reload(); 
-                    }
-                })
-                .catch(err => { alert("Network error!"); window.location.reload(); });
-            }, (errorMessage) => { }
-        ).catch((err) => {
-            loadingText.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Error starting scanner.';
-            loadingText.style.color = "#ff6b6b";
-        });
-    });
-
-    scanTextBtn.addEventListener('click', async () => { 
-        scanLine.style.display = 'block';
-        document.getElementById('action-buttons').style.display = 'none';
-        flipCameraBtn.style.display = 'none';
-        if (liveOverlayCanvas) liveOverlayCanvas.style.display = 'none';
-        loadingText.innerHTML = '<i class="fas fa-font me-2"></i> Reading text... (Hold steady!)';
-        loadingText.style.color = "#1dd1a1";
-        resultBox.style.display = 'none';
-
-        const scale = 0.5; 
-        canvas.width = video.videoWidth * scale;
-        canvas.height = video.videoHeight * scale;
-        const context = canvas.getContext('2d');
-        context.filter = 'grayscale(100%) contrast(150%)'; 
-        
-        if (currentFacingMode === "user") {
-            context.translate(canvas.width, 0);
-            context.scale(-1, 1);
-        }
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
-        if (!text || text.trim().length < 5) {
-            alert("Couldn't find enough text! Please get closer to the ingredient list.");
-            window.location.reload();
-            return;
-        }
-
-        loadingText.innerHTML = '<i class="fas fa-brain me-2"></i> Analyzing with GlowGuide AI...';
-        loadingText.style.color = "#5f27cd";
-
-        try {
-            const response = await fetch('/api/analyze-ingredients/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-                body: JSON.stringify({ extracted_text: text })
-            });
-            const data = await response.json();
-            
-            loadingText.style.display = 'none';
-            scanLine.style.display = 'none';
-            resultBox.style.display = 'block';
-            aiTextResponse.innerHTML = formatMarkdown(data.reply);
-            
-            document.getElementById('action-buttons').style.display = 'block';
-            flipCameraBtn.style.display = 'block';
-            if (liveOverlayCanvas) liveOverlayCanvas.style.display = 'block';
-            scanTextBtn.innerText = "Scan Another Product";
-        } catch (err) {
-            loadingText.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Error analyzing text!';
-            loadingText.style.color = "#ff6b6b";
-        }
-    });
-
+    // 🚀 FULL-SCREEN CINEMATIC LABOR ILLUSION
     captureFaceBtn.addEventListener('click', () => {
-        scanLine.style.display = 'block';
+        video.pause(); 
         document.getElementById('action-buttons').style.display = 'none';
-        flipCameraBtn.style.display = 'none';
-        if (liveOverlayCanvas) liveOverlayCanvas.style.display = 'none';
-        loadingText.innerHTML = '<i class="fas fa-fingerprint me-2"></i> Running multi-point biometric scan...';
-        loadingText.style.color = "#1dd1a1";
-        resultBox.style.display = 'none';
+        
+        // 1. Activate Full Screen Overlay
+        const cinematicLoader = document.getElementById('cinematic-loader');
+        const loaderText = document.getElementById('cinematic-loader-text');
+        cinematicLoader.classList.add('active');
+        
+        const loadingMessages = [
+            "Mapping 468-point 3D facial contours...",
+            "Measuring hydration and sebum retention...",
+            "Scanning for micro-inflammation...",
+            "Evaluating fine lines and elasticity...",
+            "Compiling clinical skin profile..."
+        ];
+        
+        let messageIndex = 0;
+        loaderText.innerText = loadingMessages[messageIndex];
+        
+        const loadingInterval = setInterval(() => {
+            messageIndex++;
+            if (messageIndex >= loadingMessages.length) messageIndex = loadingMessages.length - 1; 
+            loaderText.innerText = loadingMessages[messageIndex];
+        }, 3000);
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -605,8 +663,14 @@
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error(`Server status ${response.status}`);
+                return response.json();
+            })
             .then(data => {
+                clearInterval(loadingInterval); 
+                cinematicLoader.classList.remove('active'); // Hide Overlay!
+                
                 if (data.status === 'success') {
                     if (currentStream) currentStream.getTracks().forEach(track => track.stop());
                     
@@ -615,61 +679,95 @@
                     
                     if (data.report.image) {
                         const analyzedImg = document.getElementById('analyzed-face-img');
+                        const exportImg = document.getElementById('export-face-img'); // For hidden canvas
                         
                         analyzedImg.onload = () => {
                             analyzedImg.style.display = "block";
-                            
-                            const trackerBox = document.getElementById('face-tracker-box');
-                            trackerBox.style.left = '0px';
-                            trackerBox.style.top = '0px';
-                            trackerBox.style.width = '100%';
-                            trackerBox.style.height = '100%';
-
-                            setTimeout(() => {
-                                const firstCard = document.querySelector('.metric-card');
-                                if (firstCard) switchHUD('hydration', firstCard);
-                            }, 100);
+                            genuineBiometricData = data.report.map_data;
+                            setTimeout(() => { switchHUD('hydration', document.querySelector('.metric-card')); }, 100);
                         };
                         
-                        analyzedImg.src = "data:image/jpeg;base64," + data.report.image;
+                        const imgData = "data:image/jpeg;base64," + data.report.image;
+                        analyzedImg.src = imgData;
+                        exportImg.src = imgData; // Feed to hidden canvas
                     }
 
+                    // Populate Web UI
                     document.getElementById('rep-type').innerText = data.report.type;
                     document.getElementById('rep-concern').innerText = data.report.concerns;
+                    document.getElementById('view-routine-btn').href = data.redirect_url;
                     
+                    // Populate Hidden Export UI
+                    document.getElementById('export-rep-type').innerText = data.report.type;
+                    document.getElementById('export-rep-concern').innerText = data.report.concerns;
+                    document.getElementById('exp-bar-hyd').style.width = data.report.hydration + '%';
+                    document.getElementById('exp-val-hyd').innerText = data.report.hydration + '%';
+                    document.getElementById('exp-bar-red').style.width = data.report.redness + '%';
+                    document.getElementById('exp-val-red').innerText = data.report.redness + '%';
+                    document.getElementById('exp-bar-acne').style.width = (data.report.acne || 0) + '%';
+                    document.getElementById('exp-val-acne').innerText = (data.report.acne || 0) + '%';
+                    document.getElementById('exp-bar-glow').style.width = data.report.glow + '%';
+                    document.getElementById('exp-val-glow').innerText = data.report.glow + '%';
+                    
+                    // Populate Web UI Bars
                     setTimeout(() => {
                         document.getElementById('rep-hyd-bar').style.width = data.report.hydration + '%';
                         document.getElementById('rep-hyd-val').innerText = data.report.hydration + '%';
-                        
                         document.getElementById('rep-oil-bar').style.width = data.report.oil + '%';
                         document.getElementById('rep-oil-val').innerText = data.report.oil + '%';
-                        
                         document.getElementById('rep-red-bar').style.width = data.report.redness + '%';
                         document.getElementById('rep-red-val').innerText = data.report.redness + '%';
-                        
+                        document.getElementById('rep-acne-bar').style.width = (data.report.acne || 0) + '%';
+                        document.getElementById('rep-acne-val').innerText = (data.report.acne || 0) + '%';
                         document.getElementById('rep-pigment-bar').style.width = data.report.pigment + '%';
                         document.getElementById('rep-pigment-val').innerText = data.report.pigment + '%';
-                        
                         document.getElementById('rep-pore-bar').style.width = data.report.pores + '%';
                         document.getElementById('rep-pore-val').innerText = data.report.pores + '%';
-                        
                         document.getElementById('rep-aging-bar').style.width = data.report.aging + '%';
                         document.getElementById('rep-aging-val').innerText = data.report.aging + '%';
+                        document.getElementById('rep-glow-bar').style.width = data.report.glow + '%';
+                        document.getElementById('rep-glow-val').innerText = data.report.glow + '%';
+                        document.getElementById('rep-dark-bar').style.width = data.report.dark_circles + '%';
+                        document.getElementById('rep-dark-val').innerText = data.report.dark_circles + '%';
+                        document.getElementById('rep-deep-bar').style.width = data.report.deep_wrinkles + '%';
+                        document.getElementById('rep-deep-val').innerText = data.report.deep_wrinkles + '%';
                     }, 100);
-
-                    document.getElementById('view-routine-btn').href = data.redirect_url;
 
                 } else {
                     alert("Analysis failed. Try again.");
                     window.location.reload();
                 }
             })
-            .catch(err => {
-                console.error("Upload error:", err);
-                loadingText.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Error analyzing face! Try again.';
-                loadingText.style.color = "#ff6b6b";
+            .catch(error => {
+                clearInterval(loadingInterval);
+                cinematicLoader.classList.remove('active');
+                console.error("Scanner Error:", error);
+                alert("The AI encountered a complex error. Try again in better lighting!");
+                window.location.reload();
             });
         }, 'image/jpeg', 0.9);
     });
+
+    // 🚀 NEW EXPORT FUNCTION
+    function downloadDiagnosticCard() {
+        const targetCard = document.getElementById('diagnostic-export-template');
+        const btn = document.querySelector('button[onclick="downloadDiagnosticCard()"]');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
+        btn.disabled = true;
+
+        html2canvas(targetCard, { scale: 1, useCORS: true, backgroundColor: null }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'GlowLogic_Diagnostic.png';
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+
+    // START EVERYTHING!
+    initializeAI();
 </script>
 {% endblock %}

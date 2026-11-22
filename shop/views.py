@@ -4,6 +4,11 @@ import time
 import requests
 from datetime import timedelta, date
 from PIL import Image
+import urllib.parse
+import torch
+from torchvision import transforms
+from PIL import Image as PILImage
+import os
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, StreamingHttpResponse
@@ -13,21 +18,28 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, IntegerField
 from django.contrib.auth.models import User
+import re
+from django.core.paginator import Paginator
+from django.conf import settings
 
-import ollama  # 🚀 The Offline AI Engine!
-from .models import Product, Review, Wishlist, ActiveRoutine, RoutineLog , OutboundClick
-from PIL import Image, ImageDraw
+import ollama  
+from .models import Product, Review, Wishlist, ActiveRoutine, RoutineLog, OutboundClick, SkinDiaryEntry, Notification, UserProfile
 import base64
 from io import BytesIO
+import pandas as pd
+from django.http import HttpResponse
+from django.db.models import Count
+from .tasks import scan_for_price_drops
+import cv2
+import numpy as np
 
 
 def home(request):
     return render(request, 'home.html')
 
 def shop_page(request):
-    # 🚀 ONLY PULLS ACTIVE PRODUCTS
     products = Product.objects.filter(is_active=True).order_by('id')
     MASTER_BRANDS = [
         "Aqualogica", "Asaya", "Aveeno", "Be Bodywise", "Beauty of Joseon", "BFC", 
@@ -48,7 +60,6 @@ def shop_page(request):
 
     all_names = products.values_list('name', flat=True)
     active_brands = set()
-    
     for name in all_names:
         name_lower = name.lower()
         for brand in MASTER_BRANDS:
@@ -56,29 +67,46 @@ def shop_page(request):
                 clean_brand = brand.replace("L'Oréal", "L'Oreal").replace("Ponds", "Pond's").replace("Dot And Key", "Dot & Key").replace("RE' EQUIL", "Re'equil").replace("Lakmé", "Lakme")
                 active_brands.add(clean_brand)
                 break 
-                
     all_brands = sorted(list(active_brands))
     
-    # 🚀 DYNAMIC CATEGORIES
     all_categories = list(Product.objects.exclude(category__isnull=True).exclude(category__exact='').values_list('category', flat=True).distinct().order_by('category'))
     
-    # 🚀 DYNAMIC SKIN TYPES (Splits comma-separated values like "Oily, Acne-Prone" cleanly)
     raw_skin_types = Product.objects.exclude(suitable__isnull=True).exclude(suitable__exact='').values_list('suitable', flat=True)
     skin_type_set = set()
     for s in raw_skin_types:
         for part in str(s).split(','):
             clean_part = part.strip()
-            if clean_part:
-                skin_type_set.add(clean_part)
+            if clean_part: skin_type_set.add(clean_part)
     all_skin_types = sorted(list(skin_type_set))
 
+    # --- GET URL PARAMETERS ---
     skin_type = request.GET.get('skin_type')
     budget = request.GET.get('budget')
     brand = request.GET.get('brand')
     category_filter = request.GET.get('category')  
     search_query = request.GET.get('q')  
+    sort_by = request.GET.get('sort', 'newest')
 
-    if search_query: products = products.filter(name__icontains=search_query)
+    # --- FILTERING ---
+    if search_query:
+        # 🚀 1. DIRECT E-COMMERCE MATCH: Instantly grab all related products!
+        direct_matches = products.filter(
+            Q(name__icontains=search_query) | 
+            Q(category__icontains=search_query) |
+            Q(ingredients__icontains=search_query)
+            # Make sure there is NO trailing '|' here!
+        ).distinct()
+        
+        if direct_matches.exists():
+            products = direct_matches
+        else:
+            # 2. FUZZY FALLBACK: If they misspell something, use AI to guess
+            from thefuzz import process, fuzz
+            active_names = list(products.values_list('name', flat=True))
+            matches = process.extractBests(search_query, active_names, scorer=fuzz.WRatio, score_cutoff=40, limit=100) # 🚀 Increased limit to 100
+            matched_names = [m[0] for m in matches]
+            products = products.filter(name__in=matched_names)
+
     if brand and brand != "Any":
         if brand == "Other":
             brand_filter = Q()
@@ -91,36 +119,71 @@ def shop_page(request):
     if skin_type: products = products.filter(suitable__icontains=skin_type)
     if category_filter and category_filter != "Any": products = products.filter(category__icontains=category_filter)
     
+    products = list(products)
+    for p in products:
+        try: p.numeric_price = float(''.join(c for c in str(getattr(p, 'lowest_price', p.price) or '0') if c.isdigit() or c == '.'))
+        except ValueError: p.numeric_price = 999999.0
+
     if budget:
-        filtered_list = []
-        for p in products:
-            try:
-                num_price = float(''.join(c for c in str(p.price) if c.isdigit() or c == '.'))
-                if num_price <= float(budget): filtered_list.append(p)
-            except ValueError: continue
-        products = filtered_list
+        try:
+            max_budget = float(budget)
+            products = [p for p in products if p.numeric_price <= max_budget]
+        except ValueError: pass
+
+    if sort_by == 'price_low': products.sort(key=lambda x: x.numeric_price)
+    elif sort_by == 'price_high': products.sort(key=lambda x: x.numeric_price, reverse=True)
+    else: products.sort(key=lambda x: x.id, reverse=True) 
+
+    active_filters = {}
+    if search_query: active_filters['q'] = f'"{search_query}"'
+    if brand and brand != "Any": active_filters['brand'] = brand
+    if category_filter and category_filter != "Any": active_filters['category'] = category_filter
+    if skin_type: active_filters['skin_type'] = skin_type
+    if budget: active_filters['budget'] = f"Under ₹{budget}"
+
+    paginator = Paginator(products, 100)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     saved_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True)) if request.user.is_authenticated else []
 
     return render(request, 'shop.html', {
-        'products': products, 'all_brands': all_brands, 'all_categories': all_categories, 
-        'all_skin_types': all_skin_types, 'saved_product_ids': saved_product_ids 
+        'products': page_obj, 
+        'page_obj': page_obj,
+        'all_brands': all_brands, 'all_categories': all_categories, 
+        'all_skin_types': all_skin_types, 'saved_product_ids': saved_product_ids,
+        'active_filters': active_filters, 'current_sort': sort_by
     })
 
-
 def product_detail(request, product_id):
-    # 1. Fetch the main product
     product = get_object_or_404(Product.objects.prefetch_related('reviews', 'extra_sizes'), id=product_id, is_active=True)
     
-    # 2. Fetch a massive grid of similar products (24 items perfectly fills 6 rows on desktop!)
-    similar_products = Product.objects.filter(category=product.category, is_active=True).exclude(id=product.id).order_by('?')[:]
+    all_ingredients = re.split(r'[,|\n\.]', (product.ingredients or ""))
+    key_ingredients = [ing.strip().lower() for ing in all_ingredients if len(ing.strip()) > 3]
     
-    # 3. Handle related sizes (variants)
+    ingredient_conditions = Q()
+    for ing in key_ingredients[:5]: 
+        ingredient_conditions |= Q(ingredients__icontains=ing)
+    
+    if not ingredient_conditions:
+        ingredient_conditions = Q(pk=0) 
+        
+    similar_products = Product.objects.filter(category=product.category, is_active=True).exclude(id=product.id).annotate(
+        relevancy_score=Case(
+            When(suitable=product.suitable, then=Value(5)),
+            default=Value(0),
+            output_field=IntegerField(),
+        ) + Case(
+            When(ingredient_conditions, then=Value(3)),
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+    ).order_by('-relevancy_score', '?')[:8] 
+    
     related_sizes = Product.objects.filter(core_name=product.core_name, is_active=True) if product.core_name else None
     if related_sizes and related_sizes.count() <= 1: 
         related_sizes = None
 
-    # 4. Handle review submissions
     if request.method == "POST" and request.user.is_authenticated:
         rating = request.POST.get('rating')
         text = request.POST.get('text')
@@ -130,7 +193,6 @@ def product_detail(request, product_id):
 
     reviews = product.reviews.all().order_by('-date_added')
     
-    # 5. Handle Price History Chart Data
     try:
         histories = product.price_history.all().order_by('date')
         dates = [h.date.strftime("%b %d") for h in histories]
@@ -138,7 +200,6 @@ def product_detail(request, product_id):
     except AttributeError:
         dates, prices = [], []
 
-    # 🚀 6. Handle Wishlist Hearts 
     saved_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True)) if request.user.is_authenticated else []
 
     return render(request, 'product_detail.html', {
@@ -149,7 +210,7 @@ def product_detail(request, product_id):
         'price_dates': json.dumps(dates),
         'price_values': json.dumps(prices), 
         'has_enough_data': len(prices) >= 2, 
-        'saved_product_ids': saved_product_ids # 🚀 Passes the hearts to the template!
+        'saved_product_ids': saved_product_ids 
     })
 
 
@@ -166,8 +227,15 @@ def skin_quiz(request):
 
         skin_result = "Sensitive" if redness == "often" else "Oily" if feel == "shiny" else "Dry" if feel == "tight" else "Combination"
         
-        excluded_keywords = ['makeup', 'body', 'hair', 'beard', 'foot', 'hand', 'general', 'lip']
-        # 🚀 ONLY USES ACTIVE PRODUCTS FOR THE ROUTINE
+        extras = request.POST.getlist('extras') 
+        
+        excluded_keywords = ['beard', 'foot', 'general', 'lip']
+        if 'makeup' not in extras: excluded_keywords.append('makeup')
+        if 'makeup_remover' not in extras: excluded_keywords.extend(['remover', 'micellar', 'balm'])
+        if 'body_care' not in extras: excluded_keywords.extend(['body', 'lotion'])
+        if 'hand_care' not in extras: excluded_keywords.append('hand')
+        if 'haircare' not in extras: excluded_keywords.extend(['hair', 'shampoo', 'conditioner', 'scalp', 'oil'])
+
         all_products = [
             p for p in Product.objects.filter(is_active=True) 
             if not any(word in (p.category or '').lower() for word in excluded_keywords)
@@ -190,8 +258,18 @@ def skin_quiz(request):
             if preferred_brand != "Any" and preferred_brand.lower() in p.name.lower(): p.match_score += 100 
 
         all_products.sort(key=lambda x: (-x.match_score, x.numeric_price))
-        # 🚀 ADDED NIGHT CREAM TO PRIORITY
-        priority_categories = ['Cleanser', 'Toner', 'Serum', 'Eye Care', 'Moisturizer', 'Night Cream', 'Sunscreen', 'Exfoliant']
+        
+        priority_categories = []
+        if 'makeup_remover' in extras: priority_categories.extend(['Makeup Remover', 'Micellar', 'Cleansing Balm', 'Cleansing Oil'])
+        
+        priority_categories.extend(['Cleanser', 'Toner', 'Serum', 'Eye Care', 'Moisturizer', 'Night Cream', 'Sunscreen'])
+        
+        if 'makeup' in extras: priority_categories.extend(['Makeup', 'Tint', 'BB Cream'])
+        if 'haircare' in extras: priority_categories.extend(['Haircare', 'Shampoo', 'Conditioner'])
+        if 'body_care' in extras: priority_categories.extend(['Body Care', 'Body Wash', 'Body Lotion'])
+        if 'hand_care' in extras: priority_categories.append('Hand Care')
+        priority_categories.append('Exfoliant')
+
         selected_products, total_spent = [], 0.0
 
         for cat in priority_categories:
@@ -203,20 +281,20 @@ def skin_quiz(request):
                     break
 
         am_routine, pm_routine = [], []
-        
-        # 🚀 Check if the AI actually found a Night Cream for their budget
         has_night_cream = any('night cream' in (p.category or '').lower() for p in selected_products)
 
         for p in selected_products:
             cat = (p.category or '').lower()
-            if 'sunscreen' in cat or 'vitamin c' in cat: 
+            name_low = (p.name or '').lower()
+            
+            if 'sunscreen' in cat or 'vitamin c' in cat or 'makeup' in cat or 'bb cream' in name_low or 'tint' in name_low: 
                 am_routine.append(p)
-            elif 'exfoliant' in cat or 'retinol' in cat or 'night cream' in cat: 
+            elif 'exfoliant' in cat or 'retinol' in cat or 'night cream' in cat or 'remover' in cat or 'micellar' in cat or 'balm' in cat or 'cleansing oil' in cat: 
                 pm_routine.append(p)
             elif 'moisturizer' in cat:
                 am_routine.append(p)
                 if not has_night_cream:
-                    pm_routine.append(p) # 🚀 Only use moisturizer at night IF no night cream exists!
+                    pm_routine.append(p)
             else: 
                 am_routine.append(p); pm_routine.append(p)
 
@@ -232,18 +310,33 @@ def my_routine(request):
     routine_data = request.session.get('saved_routine')
     if not routine_data: return redirect('skin_quiz')
     
-    # 1. Load active products
     am_routine = [Product.objects.filter(id=pid, is_active=True).first() for pid in routine_data['am_ids'] if Product.objects.filter(id=pid, is_active=True).exists()]
     pm_routine = [Product.objects.filter(id=pid, is_active=True).first() for pid in routine_data['pm_ids'] if Product.objects.filter(id=pid, is_active=True).exists()]
+
+    def check_routine_conflicts(routine_list, routine_name):
+        warnings = []
+        combined_text = " ".join([str(getattr(p, 'ingredients', '')).lower() + str(getattr(p, 'name', '')).lower() for p in routine_list if p])
+        
+        has_retinol = 'retinol' in combined_text or 'retinoid' in combined_text
+        has_aha_bha = 'aha' in combined_text or 'glycolic' in combined_text or 'lactic' in combined_text or 'salicylic' in combined_text
+        has_vit_c = 'vitamin c' in combined_text or 'ascorbic' in combined_text
+        
+        if has_retinol and has_aha_bha:
+            warnings.append(f"⚠️ <b>{routine_name} Conflict:</b> You are combining Retinol with an AHA/BHA exfoliant. This can severely damage your skin barrier. Consider alternating nights.")
+        if has_retinol and has_vit_c:
+            warnings.append(f"⚠️ <b>{routine_name} Conflict:</b> Vitamin C and Retinol operate at different pH levels. Layering them can cause intense irritation. Move Vitamin C to the AM!")
+            
+        return warnings
+
+    am_warnings = check_routine_conflicts(am_routine, "AM Routine")
+    pm_warnings = check_routine_conflicts(pm_routine, "PM Routine")
+    all_warnings = am_warnings + pm_warnings
 
     skin_prefix = routine_data['skin_type'].split(' ')[0]
     saved_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True)) if request.user.is_authenticated else []
 
-    # ==========================================
-    # 🚀 THE SMART TEXT GENERATORS
-    # ==========================================
     def get_how_to(p):
-        if p.how_to_use: return p.how_to_use # Uses database if you manually typed it
+        if p.how_to_use: return p.how_to_use 
         cat = str(p.category).lower()
         if 'cleanser' in cat: return "Massage a small amount onto damp skin for 60 seconds, then rinse thoroughly with lukewarm water."
         if 'toner' in cat or 'mist' in cat: return "Apply to a cotton pad and sweep across the face, or gently press directly into the skin with your palms."
@@ -255,7 +348,7 @@ def my_routine(request):
         return "Apply an even layer to clean skin and gently pat until fully absorbed."
 
     def get_actives(p):
-        if p.ingredients: return p.ingredients # Uses database if you manually typed it
+        if p.ingredients: return p.ingredients 
         name = str(p.name).lower()
         actives = []
         if 'salicylic' in name or 'bha' in name: actives.append("Salicylic Acid (Unclogs pores & fights breakouts)")
@@ -272,14 +365,12 @@ def my_routine(request):
         
         if actives: return " • ".join(actives)
         
-        # Fallbacks if the name doesn't contain a famous active ingredient
         cat = str(p.category).lower()
         if 'cleanser' in cat: return "Gentle cleansing agents to remove impurities without stripping."
         if 'moisturizer' in cat: return "Emollients and humectants to lock in essential moisture."
         if 'sunscreen' in cat: return "Broad-spectrum UV filters to protect against sun damage."
         return "Dermatologically tested formula tailored for your specific skin profile."
 
-    # 4. Find smart replacements and inject the new dynamic text!
     for p in am_routine + pm_routine:
         p.smart_how_to = get_how_to(p)
         p.smart_actives = get_actives(p)
@@ -288,14 +379,12 @@ def my_routine(request):
             category=p.category, is_active=True, suitable__icontains=skin_prefix 
         ).exclude(id=p.id).order_by('?')[:5]
         
-        # Inject the text into the replacements too, so the swap button has the data!
         for alt in replacements:
             alt.smart_how_to = get_how_to(alt)
             alt.smart_actives = get_actives(alt)
             
         p.replacements = replacements
 
-    # 5. Build the Best Combo
     combo_serum = next((p for p in am_routine + pm_routine if 'serum' in (p.category or '').lower()), None)
     combo_moisturizer = next((p for p in am_routine + pm_routine if 'moisturizer' in (p.category or '').lower()), None)
 
@@ -307,13 +396,13 @@ def my_routine(request):
         'budget': routine_data['budget'],
         'combo_serum': combo_serum,
         'combo_moisturizer': combo_moisturizer,
-        'saved_product_ids': saved_product_ids 
+        'saved_product_ids': saved_product_ids,
+        'routine_warnings': all_warnings 
     })
 
 
 def skin_guide(request): 
     return render(request, 'guide.html')
-
 
 def signup_view(request):
     if request.method == 'POST':
@@ -325,7 +414,6 @@ def signup_view(request):
     else: form = UserCreationForm()
     return render(request, 'signup.html', {'form': form})
 
-
 def login_view(request):
     if request.method == 'POST':
         form = AuthenticationForm(data=request.POST)
@@ -336,14 +424,53 @@ def login_view(request):
     else: form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
 
-
 def logout_view(request):
     logout(request)
     return redirect('home')
 
-
 @login_required
 def profile_view(request):
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        if 'avatar_image' in request.FILES:
+            user_profile.avatar = request.FILES['avatar_image']
+            user_profile.save()
+            messages.success(request, "Profile picture updated!")
+            return redirect('profile')
+
+        if 'update_settings' in request.POST:
+            request.user.email = request.POST.get('email', '')
+            request.user.save()
+
+            user_profile.phone_number = request.POST.get('phone_number', '')
+            user_profile.skin_type = request.POST.get('skin_type')
+            user_profile.primary_concern = request.POST.get('primary_concern')
+            user_profile.budget = request.POST.get('budget')
+            user_profile.no_go_ingredients = request.POST.get('no_go_ingredients')
+            
+            user_profile.notify_reminders = 'notify_reminders' in request.POST
+            user_profile.notify_price_drops = 'notify_price_drops' in request.POST
+            user_profile.notify_newsletter = 'notify_newsletter' in request.POST
+            
+            user_profile.save()
+            messages.success(request, "Settings updated beautifully!")
+            return redirect('profile')
+
+        if request.FILES.get('diary_image'):
+            notes = request.POST.get('diary_notes', '')
+            SkinDiaryEntry.objects.create(
+                user=request.user, 
+                image=request.FILES['diary_image'], 
+                notes=notes
+            )
+            messages.success(request, "Skin diary updated successfully!")
+            return redirect('profile')
+            
+        if 'read_notifications' in request.POST:
+            Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+            return redirect('profile')
+
     today = date.today()
     last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
     logs = RoutineLog.objects.filter(user=request.user, date__gte=last_7_days[0])
@@ -361,7 +488,6 @@ def profile_view(request):
     check_date = today
     log_today = RoutineLog.objects.filter(user=request.user, date=check_date).first()
     today_active = log_today and (log_today.am_completed or log_today.pm_completed)
-    
     if not today_active: check_date -= timedelta(days=1)
         
     while True:
@@ -371,8 +497,17 @@ def profile_view(request):
             check_date -= timedelta(days=1)
         else: break
 
-    return render(request, 'profile.html', {'streak_data': streak_data, 'current_streak': current_streak})
+    diary_entries = SkinDiaryEntry.objects.filter(user=request.user).order_by('date_taken')
+    unread_notifications = Notification.objects.filter(user=request.user, is_read=False)
+    no_go_list = [i.strip() for i in user_profile.no_go_ingredients.split(',')] if user_profile.no_go_ingredients else []
 
+    return render(request, 'profile.html', {
+        'streak_data': streak_data, 
+        'current_streak': current_streak,
+        'diary_entries': diary_entries,
+        'notifications': unread_notifications,
+        'no_go_list': no_go_list
+    })
 
 @login_required
 def toggle_wishlist(request, product_id):
@@ -388,35 +523,41 @@ def toggle_wishlist(request, product_id):
         return JsonResponse({'status': 'success', 'action': action, 'product_id': product_id})
     return redirect(request.META.get('HTTP_REFERER', 'shop'))
 
-
 @login_required
 def wishlist_page(request):
     wishlist_items = Wishlist.objects.filter(user=request.user).select_related('product')
-    wishlist_product_ids = list(wishlist_items.values_list('product_id', flat=True))
-    recommended_products = []
+    ml_recommendations = get_smart_recommendations(request.user)
     
-    for item in wishlist_items:
-        clean_name = item.product.name.replace("Dot & Key", "").replace("Dot and Key", "").replace("-", " ")
-        name_parts = clean_name.split()
-        key_words = [word for word in name_parts if len(word) > 3][:2]
-        if key_words:
-            # 🚀 ONLY RECOMMENDS ACTIVE PRODUCTS
-            query = Product.objects.filter(is_active=True).exclude(id__in=wishlist_product_ids)
-            for word in key_words: query = query.filter(name__icontains=word)
-            for match in query[:3]: 
-                if match not in recommended_products: recommended_products.append(match)
-                    
-    return render(request, 'wishlist.html', {'wishlist_items': wishlist_items, 'recommended_products': recommended_products[:4]})
-
+    if not ml_recommendations.exists():
+        wishlist_product_ids = wishlist_items.values_list('product_id', flat=True)
+        ml_recommendations = Product.objects.filter(is_active=True).exclude(id__in=wishlist_product_ids).order_by('?')[:4]
+                
+    return render(request, 'wishlist.html', {
+        'wishlist_items': wishlist_items, 
+        'recommended_products': ml_recommendations
+    })
 
 def live_search(request):
     query = request.GET.get('q', '')
     if len(query) > 1:
-        # 🚀 ONLY SUGGESTS ACTIVE PRODUCTS IN SEARCH BAR
-        results = Product.objects.filter(name__icontains=query, is_active=True)[:5]
-        return JsonResponse([{'id': p.id, 'name': p.name, 'price': p.lowest_price} for p in results], safe=False)
+        # 🚀 1. EXACT MATCHES FIRST: Instantly find exactly what the user typed
+        exact_matches = Product.objects.filter(name__icontains=query, is_active=True)[:5]
+        results = [{'id': p.id, 'name': p.name, 'price': getattr(p, 'lowest_price', p.price)} for p in exact_matches]
+        
+        # 🚀 2. FUZZY TYPO GUESSER: If we didn't find 5 exact matches, use AI to fill the rest
+        if len(results) < 5:
+            from thefuzz import process, fuzz
+            all_active = Product.objects.filter(is_active=True).exclude(id__in=[r['id'] for r in results])
+            names_dict = {p.id: p.name for p in all_active}
+            
+            matches = process.extractBests(query, names_dict, scorer=fuzz.WRatio, score_cutoff=45, limit=5 - len(results))
+            
+            for match in matches:
+                p = all_active.get(id=match[2])
+                results.append({'id': p.id, 'name': p.name, 'price': getattr(p, 'lowest_price', p.price)})
+                
+        return JsonResponse(results, safe=False)
     return JsonResponse([], safe=False)
-
 
 @staff_member_required
 def admin_analytics(request):
@@ -428,15 +569,10 @@ def admin_analytics(request):
         'chart_data': json.dumps(cat_counts),
     })
 
-
 @ensure_csrf_cookie
 def ai_assistant_page(request):
     return render(request, 'chat.html')
 
-
-# ---------------------------------------------------------
-# 🚀 1. THE LIGHTNING FAST HYBRID CHATBOT WITH STREAMING
-# ---------------------------------------------------------
 def chat_bot_api(request):
     if request.method == 'POST':
         try:
@@ -458,7 +594,6 @@ def chat_bot_api(request):
                 
                 steps = ['cleanser', 'serum', 'moisturizer', 'sunscreen']
                 for step in steps:
-                    # 🚀 BOT ONLY SUGGESTS ACTIVE PRODUCTS
                     prod = Product.objects.filter(category__icontains=step, suitable__icontains=concern, is_active=True).order_by('?').first()
                     if not prod: 
                         prod = Product.objects.filter(category__icontains=step, is_active=True).order_by('?').first()
@@ -554,7 +689,6 @@ def chat_bot_api(request):
             
     return JsonResponse({'status': 'error', 'reply': 'Invalid request method.'}, status=400)
 
-
 @login_required
 def log_routine(request):
     if request.method == 'POST':
@@ -570,10 +704,6 @@ def log_routine(request):
             return JsonResponse({'status': 'error', 'message': str(db_err)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
 
-
-# ---------------------------------------------------------
-# 🚀 2. TEXT/INGREDIENT SCANNER AI (SMART DICTIONARY + OLLAMA FALLBACK)
-# ---------------------------------------------------------
 @csrf_exempt
 def analyze_ingredients_api(request):
     if request.method == 'POST':
@@ -679,15 +809,15 @@ def analyze_ingredients_api(request):
     return JsonResponse({'status': 'error', 'reply': 'Invalid request.'}, status=400)
 
 
-# ---------------------------------------------------------
-# 🚀 3. ADVANCED FACE SCANNER (DYNAMIC REPORTS -> ROUTINE)
-# ---------------------------------------------------------
+# ==========================================
+# 🚀 3. THE CLINICAL-GRADE AI SKIN SCANNER
+# ==========================================
 @csrf_exempt
 def ai_skin_scanner(request):
     if request.method == "POST" and request.FILES.get('skin_image'):
         try:
             image_file = request.FILES['skin_image']
-            img = Image.open(image_file).convert('RGB')
+            img = PILImage.open(image_file).convert('RGB')
             
             img.thumbnail((600, 600)) 
             buffered = BytesIO()
@@ -696,22 +826,251 @@ def ai_skin_scanner(request):
             
             time.sleep(1.0) 
             
-            skin_types = ["Oily", "Dry", "Sensitive", "Combination"]
-            concerns_list = ["acne", "aging", "glow", "hydration", "texture"]
+            # --- Default scores if no face is found (CRITICAL FALLBACKS) ---
+            redness_score, oil_score, pore_score = 15, 20, 30
+            hydration_score, acne_score, pigment_score, aging_score, glow_score = 85, 0, 12, 10, 50
+            fine_line_score, deep_wrinkle_score, dark_circle_score = 10, 5, 15 
             
-            detected_skin = random.choice(skin_types)
-            num_concerns = random.randint(2, 3)
-            multiple_concerns = random.sample(concerns_list, num_concerns)
+            detected_skin = "Normal"
+            multiple_concerns = ["glow", "hydration"]
             
-            hydration_score = random.randint(15, 40) if detected_skin == "Dry" else random.randint(50, 85)
-            oil_score = random.randint(65, 95) if detected_skin == "Oily" else random.randint(20, 50)
-            redness_score = random.randint(60, 90) if detected_skin == "Sensitive" else random.randint(10, 30)
-            pigment_score = random.randint(30, 85)
-            pore_score = random.randint(40, 90)
-            aging_score = random.randint(20, 75)
+            real_acne_coords = []
+            real_pigment_coords = []
+            center_x, center_y, face_w, face_h = 50, 50, 75, 75
+            
+            image_file.seek(0)
+            file_bytes = np.frombuffer(image_file.read(), np.uint8)
+            img_cv = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+
+            # 🚀 ADD THIS DEBUG CHECK
+            cascade_path = os.path.join(os.path.dirname(__file__), 'haarcascade_frontalface_default.xml')
+            if not os.path.exists(cascade_path):
+                print(f"CRITICAL ERROR: Haar Cascade file not found at {cascade_path}")
+                return JsonResponse({'status': 'error', 'message': 'Detection model missing on server'}, status=500)
+            
+            face_cascade = cv2.CascadeClassifier(cascade_path)
+            
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(100, 100))
+
+            if len(faces) > 0:
+                x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
+                
+                # 🎯 1. STRICT ANATOMICAL ROI (Shave off background)
+                y_offset = int(h * 0.15)
+                h_roi = int(h * 0.75)
+                x_offset = int(w * 0.15)
+                w_roi = int(w * 0.70)
+
+                roi_color = img_cv[y + y_offset : y + y_offset + h_roi, x + x_offset : x + x_offset + w_roi]
+                
+                hsv_roi = cv2.cvtColor(roi_color, cv2.COLOR_BGR2HSV)
+                gray_roi = cv2.cvtColor(roi_color, cv2.COLOR_BGR2GRAY)
+                lab_roi = cv2.cvtColor(roi_color, cv2.COLOR_BGR2LAB)
+                l_channel, a_channel, b_channel = cv2.split(lab_roi)
+
+                # =======================================================
+                # 🛡️ THE PURE SKIN MASK (Extended to cover full eye socket!)
+                # =======================================================
+                skin_mask = np.ones(gray_roi.shape, dtype=np.uint8) * 255
+                # 1. Erase Eyes & Eyebrows (Leaves Forehead Open, extends lower to block pupils!)
+                cv2.rectangle(skin_mask, (0, int(h_roi * 0.18)), (w_roi, int(h_roi * 0.48)), 0, -1)
+                # 2. Erase Nose Bridge & Nostrils
+                cv2.rectangle(skin_mask, (int(w_roi * 0.30), int(h_roi * 0.48)), (int(w_roi * 0.70), int(h_roi * 0.68)), 0, -1)
+                # 3. Erase Mouth, Lips, & Beard
+                cv2.rectangle(skin_mask, (0, int(h_roi * 0.68)), (w_roi, h_roi), 0, -1)
+
+                # =======================================================
+                # 🌸 THE AGING MASK 
+                # =======================================================
+                aging_mask = np.zeros(gray_roi.shape, dtype=np.uint8)
+                cv2.rectangle(aging_mask, (int(w_roi * 0.15), int(h_roi * 0.05)), (int(w_roi * 0.85), int(h_roi * 0.42)), 255, -1)
+
+                # --- REDNESS ANALYSIS ---
+                lower_red1, upper_red1 = np.array([0, 80, 50]), np.array([6, 255, 255])
+                lower_red2, upper_red2 = np.array([174, 80, 50]), np.array([180, 255, 255])
+                red_mask = cv2.inRange(hsv_roi, lower_red1, upper_red1) + cv2.inRange(hsv_roi, lower_red2, upper_red2)
+                red_mask = cv2.bitwise_and(red_mask, red_mask, mask=skin_mask)
+
+                # --- PIGMENTATION ANALYSIS ---
+                valid_skin_pixels = max(cv2.countNonZero(skin_mask), 1)
+                l_mean = np.mean(l_channel[skin_mask == 255]) if valid_skin_pixels > 0 else 127
+                _, dark_mask = cv2.threshold(l_channel, int(max(l_mean - 15, 0)), 255, cv2.THRESH_BINARY_INV)
+                dark_mask = cv2.bitwise_and(dark_mask, dark_mask, mask=skin_mask)
+
+                # =======================================================
+                # 👁️ FEATURE 3: DEDICATED UNDER-EYE ANALYSIS (Fixed Baseline)
+                # =======================================================
+                undereye_mask = np.zeros(gray_roi.shape, dtype=np.uint8)
+                cv2.rectangle(undereye_mask, (int(w_roi * 0.15), int(h_roi * 0.45)), (int(w_roi * 0.40), int(h_roi * 0.55)), 255, -1)
+                cv2.rectangle(undereye_mask, (int(w_roi * 0.60), int(h_roi * 0.45)), (int(w_roi * 0.85), int(h_roi * 0.55)), 255, -1)
+                
+                valid_undereye_pixels = max(cv2.countNonZero(undereye_mask), 1)
+                undereye_l_mean = np.mean(l_channel[undereye_mask == 255]) if valid_undereye_pixels > 0 else l_mean
+                
+                # 🚀 FIX: Create a dedicated "Cheek Baseline" to compare the eyes against.
+                # Cheeks are naturally the brightest/flattest part of the face.
+                cheek_mask = np.zeros(gray_roi.shape, dtype=np.uint8)
+                cv2.rectangle(cheek_mask, (int(w_roi * 0.20), int(h_roi * 0.55)), (int(w_roi * 0.80), int(h_roi * 0.65)), 255, -1)
+                valid_cheek_pixels = max(cv2.countNonZero(cheek_mask), 1)
+                cheek_l_mean = np.mean(l_channel[cheek_mask == 255]) if valid_cheek_pixels > 0 else l_mean
+                
+                # Calculates Dark Circles by measuring how much darker the bag is vs the upper cheek
+                dark_circle_diff = max(cheek_l_mean - undereye_l_mean, 0)
+                dark_circle_score = int(np.clip((dark_circle_diff * 4.0) + 5, 0, 100)) # Added a +5 floor to prevent absolute zero
+
+                # =======================================================
+                # 📈 FEATURE 5: WRINKLE DEPTH vs FINE LINES (Tuned Multipliers)
+                # =======================================================
+                grad_x = cv2.Sobel(gray_roi, cv2.CV_32F, 1, 0, ksize=3)
+                grad_y = cv2.Sobel(gray_roi, cv2.CV_32F, 0, 1, ksize=3)
+                grad_mag = cv2.magnitude(grad_x, grad_y)
+                
+                grad_mag = cv2.convertScaleAbs(grad_mag) 
+                grad_mag = cv2.bitwise_and(grad_mag, grad_mag, mask=aging_mask)
+                
+                valid_aging_pixels = max(cv2.countNonZero(aging_mask), 1)
+                
+                # 🚀 FIX: Raised thresholds to ignore normal skin texture, and massively lowered multipliers!
+                fine_lines_count = np.sum((grad_mag > 60) & (grad_mag <= 150))
+                fine_line_score = int(np.clip((fine_lines_count / valid_aging_pixels) * 50, 0, 100)) 
+                
+                deep_wrinkles_count = np.sum(grad_mag > 150)
+                deep_wrinkle_score = int(np.clip((deep_wrinkles_count / valid_aging_pixels) * 80, 0, 100)) 
+                
+                aging_score = int(np.clip((fine_line_score * 0.5) + (deep_wrinkle_score * 0.5), 0, 100))
+
+                # 🎯 EXTRACT REAL SPOTS
+                contours, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                acne_spots = [c for c in contours if cv2.contourArea(c) > 5] 
+                pig_contours, _ = cv2.findContours(dark_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                pigment_spots = [c for c in pig_contours if cv2.contourArea(c) > 5]
+
+                # =======================================================
+                # 📊 2. CLINICAL-GRADE SCORING (Strict & Honest Math)
+                # =======================================================
+                redness_ratio = (cv2.countNonZero(red_mask) / valid_skin_pixels) * 100
+                redness_score = int(np.clip((redness_ratio - 5) * 1.5, 0, 100)) 
+
+                v_channel = hsv_roi[:,:,2]
+                high_value_mask = cv2.inRange(v_channel, 200, 255) 
+                high_value_mask = cv2.bitwise_and(high_value_mask, high_value_mask, mask=skin_mask)
+                shine_ratio = (cv2.countNonZero(high_value_mask) / valid_skin_pixels) * 100
+                oil_score = int(np.clip(shine_ratio * 1.2, 0, 100)) 
+
+                texture_std = np.std(gray_roi[skin_mask == 255]) if valid_skin_pixels > 0 else 5
+                pore_score = int(np.clip((texture_std - 10) * 1.5, 0, 100))
+                hydration_score = 100 - pore_score
+
+                tone_variance = np.std(l_channel[skin_mask == 255]) if valid_skin_pixels > 0 else 5
+                pigment_score = int(np.clip((tone_variance - 10) * 2.0, 0, 100)) 
+                acne_score = int(np.clip(len(acne_spots) * 6, 0, 100))
+
+                glow_score = int(np.clip(100 - (pore_score * 0.35) - (pigment_score * 0.3) - (aging_score * 0.3) + (oil_score * 0.1), 0, 100))
+
+                # ==========================================
+                # 🧠 PHASE 3: PYTORCH DEEP LEARNING INFERENCE
+                # ==========================================
+                roi_rgb = cv2.cvtColor(roi_color, cv2.COLOR_BGR2RGB)
+                pil_roi = PILImage.fromarray(roi_rgb)
+
+                preprocess = transforms.Compose([
+                    transforms.Resize((224, 224)),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
+                input_tensor = preprocess(pil_roi).unsqueeze(0)
+
+                try:
+                    model_path = os.path.join(settings.BASE_DIR, 'skin_model.pt') 
+                    if not os.path.exists(model_path):
+                        model_path = os.path.join(settings.BASE_DIR, 'skin.pt')
+
+                    device = torch.device("cpu")
+                    skin_ai = torch.jit.load(model_path, map_location=device)
+                    skin_ai.eval() 
+
+                    with torch.no_grad():
+                        output = skin_ai(input_tensor)
+                        _, predicted_idx = torch.max(output, 1)
+
+                    ai_classes = ['Combination', 'Dry', 'Normal', 'Oily', 'Sensitive']
+                    detected_skin = ai_classes[predicted_idx.item()]
+                    
+                except Exception as e:
+                    detected_skin = "Normal" 
+
+                multiple_concerns = []
+                if redness_score > 35: multiple_concerns.append("redness")
+                if pore_score > 55: multiple_concerns.append("texture")
+                if acne_score > 25 or oil_score > 60: multiple_concerns.append("acne")
+                if hydration_score < 45: multiple_concerns.append("hydration")
+                if pigment_score > 40: multiple_concerns.append("pigmentation")
+                if aging_score > 35: multiple_concerns.append("aging")
+                
+                if glow_score > 60 and acne_score < 20: multiple_concerns.append("glow")
+                if not multiple_concerns: multiple_concerns = ["glow", "hydration"]
+
+                # ✂️ CLINICAL HEADSHOT CROP
+                padding = int(w * 0.15) 
+                y1 = max(0, y - padding)
+                y2 = min(img_cv.shape[0], y + h + padding)
+                x1 = max(0, x - padding)
+                x2 = min(img_cv.shape[1], x + w + padding)
+                headshot_cv = img_cv[y1:y2, x1:x2]
+
+                hw = x2 - x1
+                hh = y2 - y1
+
+                # =======================================================
+                # 🎯 MAP REAL COORDINATES (ACCOUNTING FOR ROI OFFSETS)
+                # =======================================================
+                
+                # 🚀 FIXED: We increased the limit from 6 to 50 spots each to capture abundant marks!
+                # If your face has 40 acne marks, we will now catch all 40 of them.
+
+                for spot in sorted(acne_spots, key=cv2.contourArea, reverse=True)[:50]: 
+                    M = cv2.moments(spot)
+                    if M["m00"] != 0:
+                        cx, cy = int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])
+                        # Apply ROI offsets to get absolute position on input image
+                        abs_x = x + x_offset + cx
+                        abs_y = y + y_offset + cy
+                        # Convert to percentage relative to the final cropped headshot
+                        px = min(max(((abs_x) - x1) / hw * 100, 5), 95)
+                        py = min(max(((abs_y) - y1) / hh * 100, 5), 95)
+                        real_acne_coords.append({'x': round(px, 1), 'y': round(py, 1)})
+                        
+                # 🚀 FIXED: We increased the limit from 6 to 50 spots each to capture abundant marks!
+                for spot in sorted(pigment_spots, key=cv2.contourArea, reverse=True)[:50]: 
+                    M = cv2.moments(spot)
+                    if M["m00"] != 0:
+                        cx, cy = int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])
+                        abs_x = x + x_offset + cx
+                        abs_y = y + y_offset + cy
+                        px = min(max(((abs_x) - x1) / hw * 100, 5), 95)
+                        py = min(max(((abs_y) - y1) / hh * 100, 5), 95)
+                        real_pigment_coords.append({'x': round(px, 1), 'y': round(py, 1)})
+
+                # 📐 Global Face Tracking Metrics
+                center_x = (((x + w/2) - x1) / hw) * 100
+                center_y = (((y + h/2) - y1) / hh) * 100
+                face_w = (w / hw) * 100
+                face_h = (h / hh) * 100
+
+                # 📸 RE-ENCODE THE CLEAN IMAGE
+                img_rgb = cv2.cvtColor(headshot_cv, cv2.COLOR_BGR2RGB)
+                pil_annotated = PILImage.fromarray(img_rgb)
+                pil_annotated.thumbnail((600, 600))
+                buffered = BytesIO()
+                pil_annotated.save(buffered, format="JPEG", quality=85)
+                encoded_img = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+                dataset_dir = os.path.join(settings.MEDIA_ROOT, 'dataset', detected_skin)
+                os.makedirs(dataset_dir, exist_ok=True)
+                cv2.imwrite(os.path.join(dataset_dir, f"face_scan_{int(time.time())}.jpg"), roi_color)
 
             excluded_cats = ['makeup', 'body', 'hair', 'beard', 'foot', 'general', 'lip', 'hand']
-            # 🚀 SCANNER ONLY SUGGESTS ACTIVE PRODUCTS
             all_products = [p for p in Product.objects.filter(is_active=True) if not any(x in (p.category or '').lower() for x in excluded_cats) and not any(x in (p.name or '').lower() for x in excluded_cats)]
             
             max_budget = 5000.0 
@@ -777,7 +1136,20 @@ def ai_skin_scanner(request):
                     'redness': redness_score,
                     'pigment': pigment_score,
                     'pores': pore_score,
-                    'aging': aging_score
+                    'aging': aging_score,
+                    'fine_lines': fine_line_score,
+                    'deep_wrinkles': deep_wrinkle_score,
+                    'dark_circles': dark_circle_score,
+                    'acne': acne_score,
+                    'glow': glow_score,
+                    'map_data': {
+                        'acne': real_acne_coords,
+                        'pigment': real_pigment_coords,
+                        'center_x': center_x,
+                        'center_y': center_y,
+                        'face_w': face_w,   
+                        'face_h': face_h    
+                    }
                 }
             })
             
@@ -787,9 +1159,7 @@ def ai_skin_scanner(request):
             
     return render(request, 'scanner.html')
 
-# ---------------------------------------------------------
-# 🚀 4. BARCODE LOOKUP API
-# ---------------------------------------------------------
+
 @csrf_exempt
 def barcode_lookup(request):
     if request.method == 'POST':
@@ -797,7 +1167,6 @@ def barcode_lookup(request):
             data = json.loads(request.body)
             scanned_code = data.get('barcode', '').strip()
             
-            # 🚀 ONLY PULLS ACTIVE PRODUCTS BY BARCODE
             product = Product.objects.filter(barcode=scanned_code, is_active=True).first()
             
             if product:
@@ -813,18 +1182,13 @@ def barcode_lookup(request):
                 
                 if external_data.get('status') == 1:
                     item = external_data.get('product', {})
-                    
                     product_info = {
                         'name': item.get('product_name', 'Unknown Product Name'),
                         'brand': item.get('brands', 'Unknown Brand'),
                         'image_url': item.get('image_front_url', ''),
                         'ingredients': item.get('ingredients_text', 'Ingredient list not available.')
                     }
-                    
-                    return JsonResponse({
-                        'status': 'external_found',
-                        'product': product_info
-                    })
+                    return JsonResponse({'status': 'external_found', 'product': product_info})
                 else:
                     return JsonResponse({'status': 'not_found', 'message': 'Product not found locally or globally.'})
                 
@@ -834,21 +1198,91 @@ def barcode_lookup(request):
     return JsonResponse({'status': 'invalid_request'})
 
 
-def track_and_redirect(request, product_id):
+def track_and_redirect(request, product_id, store):
     product = get_object_or_404(Product, id=product_id)
     user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
     
     if "python" not in user_agent and "bot" not in user_agent:
-        
-        # 👇 Figure out who the user is (None if they aren't logged in)
-        clicking_user = request.user if request.user.is_authenticated else None
-        
         OutboundClick.objects.create(
-            user=clicking_user,  # 👇 Save the user here!
+            user=request.user if request.user.is_authenticated else None,
             product_name=product.name,
-            store_name="Amazon"
+            store_name=store.capitalize()
         )
     
-    affiliate_id = "glowlogic-21"
-    final_url = f"{product.amazon_link}?tag={affiliate_id}"
-    return redirect(final_url)
+    encoded_name = urllib.parse.quote(product.name)
+
+    if store == 'amazon':
+        link = product.amazon_link if product.amazon_link and product.amazon_link != 'None' else f"https://www.amazon.in/s?k={encoded_name}"
+        return redirect(f"{link}?tag=glowlogic-21" if "?" not in link else f"{link}&tag=glowlogic-21")
+    elif store == 'flipkart':
+        link = product.flipkart_link if product.flipkart_link and product.flipkart_link != 'None' else f"https://www.flipkart.com/search?q={encoded_name}"
+        return redirect(f"{link}&affid=glowlogic_id" if "?" in link else f"{link}?affid=glowlogic_id")
+    elif store == 'myntra':
+        link = product.myntra_link if product.myntra_link and product.myntra_link != 'None' else f"https://www.myntra.com/search?q={encoded_name}"
+        return redirect(link)
+    elif store == 'vendor':
+        return redirect(product.vendor_link if product.vendor_link else "/")
+        
+    return redirect('product_detail', product_id=product.id)
+
+def get_smart_recommendations(user):
+    user_likes = Wishlist.objects.filter(user=user).values_list('product_id', flat=True)
+    similar_users = Wishlist.objects.filter(product_id__in=user_likes).exclude(user=user).values_list('user_id', flat=True)
+    recommendations = Product.objects.filter(
+        wishlist__user_id__in=similar_users,
+        is_active=True
+    ).exclude(id__in=user_likes).annotate(
+        match_score=Count('wishlist')
+    ).order_by('-match_score')[:4]
+    
+    return recommendations
+
+
+@staff_member_required
+def export_affiliate_analytics(request):
+    clicks = OutboundClick.objects.all().values(
+        'clicked_at', 'product_name', 'store_name', 
+        'user__username', 'user__id'
+    )
+    df = pd.DataFrame(list(clicks))
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="GlowLogic_PowerBI_Dataset.csv"'
+    
+    if not df.empty:
+        df['user__username'] = df['user__username'].fillna('Guest')
+        df['user__id'] = df['user__id'].fillna('Anonymous')
+        df['clicked_at'] = pd.to_datetime(df['clicked_at'])
+        
+        df['Date'] = df['clicked_at'].dt.date
+        df['Time'] = df['clicked_at'].dt.time
+        df['Year'] = df['clicked_at'].dt.year
+        df['Month'] = df['clicked_at'].dt.month_name()
+        df['Week_Number'] = df['clicked_at'].dt.isocalendar().week
+        df['Day_of_Week'] = df['clicked_at'].dt.day_name()
+        
+        df = df.rename(columns={
+            'clicked_at': 'Exact_Timestamp',
+            'product_name': 'Product',
+            'store_name': 'Retailer',
+            'user__username': 'Username',
+            'user__id': 'User_ID'
+        })
+        
+        columns_order = [
+            'Exact_Timestamp', 'Date', 'Time', 'Year', 'Month', 'Week_Number', 'Day_of_Week',
+            'User_ID', 'Username', 'Product', 'Retailer'
+        ]
+        df = df[columns_order]
+        df.to_csv(path_or_buf=response, index=False)
+    else:
+        response.write("No affiliate click data available yet.")
+        
+    return response
+
+@staff_member_required
+def trigger_price_analysis_api(request):
+    if request.method == 'POST':
+        scan_for_price_drops.delay()
+        messages.success(request, "Background worker started! Scanning product databases now.")
+        return redirect('admin_analytics')
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
